@@ -2,7 +2,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import L from 'leaflet'
 
-const TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+const TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
 const ATTRIB = '© <a href="https://openstreetmap.org">OSM</a> © <a href="https://carto.com">CartoDB</a>'
 
 // Transport marker config
