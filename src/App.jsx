@@ -1,5 +1,4 @@
 // App.jsx v2 — HOMERUN Scan-First Architecture
-// Scans ALL transport on landing, shows live departure boards
 import { useState, useEffect, useRef, useCallback } from 'react'
 import TopBar        from './components/TopBar'
 import LandButton    from './components/LandButton'
@@ -19,45 +18,28 @@ const EMPTY_SCAN = { bus:[], train:[], tram:[], metro:[], taxi:[], car:[], cycle
 export default function App() {
   const mapRef = useRef(null)
 
-  // ── Core state ─────────────────────────────────
-  const [from,           setFrom]           = useState(null)
-  const [to,             setTo]             = useState(null)
-  const [scanState,      setScanState]      = useState('idle')   // idle | scanning | done
-  const [scanResults,    setScanResults]    = useState(EMPTY_SCAN)
-  const [localTaxis,     setLocalTaxis]     = useState([])
-  const [selectedItem,   setSelectedItem]   = useState(null)     // tapped marker
-  const [selectedWalk,   setSelectedWalk]   = useState(null)     // walk info to selected
-  const [homeRoutes,     setHomeRoutes]     = useState([])
-  const [activeRouteIdx, setActiveRouteIdx] = useState(0)
-  const [homeRoutesLoading, setHomeRoutesLoading] = useState(false)
-  const [showShare,      setShowShare]      = useState(false)
-  const [sidebarOpen,    setSidebarOpen]    = useState(false)    // reserved for future sidebar
-  const [home,           setHome]           = useState(() => {
+  const [from,              setFrom]             = useState(null)
+  const [to,                setTo]               = useState(null)
+  const [scanState,         setScanState]        = useState('idle')
+  const [scanResults,       setScanResults]      = useState(EMPTY_SCAN)
+  const [localTaxis,        setLocalTaxis]       = useState([])
+  const [selectedItem,      setSelectedItem]     = useState(null)
+  const [selectedWalk,      setSelectedWalk]     = useState(null)
+  const [homeRoutes,        setHomeRoutes]       = useState([])
+  const [activeRouteIdx,    setActiveRouteIdx]   = useState(0)
+  const [homeRoutesLoading, setHomeRoutesLoading]= useState(false)
+  const [showShare,         setShowShare]        = useState(false)
+  const [home,              setHome]             = useState(() => {
     try { return JSON.parse(localStorage.getItem('homerun_home') || 'null') } catch { return null }
   })
 
   const { toasts, showToast } = useToast()
   const {
+    mapRef: leafletMapRef,
     setFromMarker, setToMarker,
     drawScanRings, drawTransportMarkers, drawWalkLines,
     drawRoutes, flyTo, flyToBounds, fitItems,
   } = useMap(mapRef)
-
-  // ── Setup map longpress ──────────────────────
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-    map._longPressCallback = async (lat, lon) => {
-      showToast('📍 Setting landing location…')
-      try {
-        const data = await reverseGeocode(lat, lon)
-        const name = data.display_name?.split(',').slice(0,3).join(',').trim() || `${lat.toFixed(5)}, ${lon.toFixed(5)}`
-        await handleSetFrom({ lat, lon, name })
-      } catch {
-        await handleSetFrom({ lat, lon, name: `${lat.toFixed(5)}, ${lon.toFixed(5)}` })
-      }
-    }
-  }, [mapRef.current, handleSetFrom, showToast])
 
   // ── Parse URL on load ─────────────────────────
   useEffect(() => {
@@ -73,7 +55,7 @@ export default function App() {
 
   // ── Sync markers ──────────────────────────────
   useEffect(() => { setFromMarker(from) }, [from])
-  useEffect(() => { setToMarker(to) },   [to])
+  useEffect(() => { setToMarker(to) },     [to])
 
   // ── Redraw routes on active change ────────────
   useEffect(() => { drawRoutes(homeRoutes, activeRouteIdx) }, [homeRoutes, activeRouteIdx])
@@ -87,27 +69,17 @@ export default function App() {
     setScanState('scanning')
     setScanResults(EMPTY_SCAN)
     setLocalTaxis([])
-
     showToast('📡 Scanning all transport networks…')
-
     try {
       const [scan, taxis] = await Promise.all([
         deepScan(loc.lat, loc.lon),
         scanLocalTaxis(loc.lat, loc.lon),
       ])
-
       setScanResults(scan)
       setLocalTaxis(taxis)
       setScanState('done')
-
-      // Draw all markers on map
       drawTransportMarkers(scan, handleMarkerClick)
-
-      // Draw walk lines to nearest bus + train
-      const walkTargets = [
-        scan.bus[0], scan.train[0], scan.tram[0],
-      ].filter(Boolean)
-
+      const walkTargets = [scan.bus[0], scan.train[0], scan.tram[0]].filter(Boolean)
       const walkLines = await Promise.all(
         walkTargets.map(async (t) => {
           const w = await walkingRoute(loc.lat, loc.lon, t.lat, t.lon)
@@ -116,16 +88,11 @@ export default function App() {
         })
       )
       drawWalkLines(walkLines.filter(Boolean))
-
-      // Fit map to show from + all found stops
       const allItems = Object.values(scan).flat().slice(0, 12)
-      if (allItems.length > 0) {
-        fitItems([{ lat: loc.lat, lon: loc.lon }, ...allItems])
-      }
-
+      if (allItems.length > 0) fitItems([{ lat: loc.lat, lon: loc.lon }, ...allItems])
       const total = Object.values(scan).flat().length + taxis.length
       showToast(`✅ Found ${total} transport options`, 'success')
-    } catch (err) {
+    } catch {
       setScanState('done')
       showToast('⚠️ Scan partial — check connection', 'warn')
     }
@@ -154,10 +121,38 @@ export default function App() {
     )
   }, [handleSetFrom, showToast])
 
-  // ── Marker tapped → departure board ──────────
+  // ── Long press on map to set location ────────
+  useEffect(() => {
+    const map = leafletMapRef?.current
+    if (!map) return
+    let pressTimer = null
+    const onDown = (e) => {
+      pressTimer = setTimeout(async () => {
+        const { lat, lng } = e.latlng
+        showToast('📍 Setting landing location…')
+        try {
+          const data = await reverseGeocode(lat, lng)
+          const name = data.display_name?.split(',').slice(0,3).join(',').trim() || `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+          await handleSetFrom({ lat, lon: lng, name })
+        } catch {
+          await handleSetFrom({ lat, lon: lng, name: `${lat.toFixed(5)}, ${lng.toFixed(5)}` })
+        }
+      }, 600)
+    }
+    const onUp = () => clearTimeout(pressTimer)
+    map.on('mousedown', onDown)
+    map.on('touchstart', onDown)
+    map.on('mouseup mousemove touchend', onUp)
+    return () => {
+      map.off('mousedown', onDown)
+      map.off('touchstart', onDown)
+      map.off('mouseup mousemove touchend', onUp)
+    }
+  }, [leafletMapRef?.current, handleSetFrom, showToast])
+
+  // ── Marker tapped ─────────────────────────────
   const handleMarkerClick = useCallback(async (item) => {
     setSelectedItem(item)
-    // Compute walk info
     if (from && item.lat && item.lon) {
       const walk = await walkingRoute(from.lat, from.lon, item.lat, item.lon)
       setSelectedWalk(walk)
@@ -184,15 +179,6 @@ export default function App() {
     setHomeRoutesLoading(false)
   }, [from, to, scanResults, drawRoutes, flyToBounds, showToast])
 
-  // ── Save home ─────────────────────────────────
-  const handleSaveHome = useCallback(() => {
-    if (!to) return
-    localStorage.setItem('homerun_home', JSON.stringify(to))
-    setHome(to)
-    showToast('🏠 Home saved', 'success')
-  }, [to, showToast])
-
-
   // ── Reset everything ──────────────────────────
   const handleReset = useCallback(() => {
     setFrom(null)
@@ -204,8 +190,19 @@ export default function App() {
     setActiveRouteIdx(0)
     setSelectedItem(null)
     setSelectedWalk(null)
+    setFromMarker(null)
+    setToMarker(null)
     drawRoutes([], 0)
-  }, [drawRoutes])
+    showToast('↺ Reset — ready for new search')
+  }, [drawRoutes, setFromMarker, setToMarker, showToast])
+
+  // ── Save home ─────────────────────────────────
+  const handleSaveHome = useCallback(() => {
+    if (!to) return
+    localStorage.setItem('homerun_home', JSON.stringify(to))
+    setHome(to)
+    showToast('🏠 Home saved', 'success')
+  }, [to, showToast])
 
   // ── Keyboard ──────────────────────────────────
   useEffect(() => {
@@ -214,41 +211,33 @@ export default function App() {
     return () => window.removeEventListener('keydown', h)
   }, [])
 
-  // ── Map height adjusts with panel ────────────
-  const mapBottom = 'var(--panel-h)'
-
   return (
     <div style={{ width:'100%', height:'100%', position:'relative', overflow:'hidden' }}>
 
-      {/* ── Map ── */}
-      <div
-        ref={mapRef}
-        style={{
-          position: 'fixed',
-          top: '44px', left: 0, right: 0,
-          bottom: mapBottom,
-          zIndex: 1,
-          transition: 'bottom 0.3s var(--ease)',
-        }}
-      />
+      {/* Map */}
+      <div ref={mapRef} style={{
+        position: 'fixed', top: '44px', left: 0, right: 0,
+        bottom: 'var(--panel-h)', zIndex: 1,
+      }}/>
 
-      {/* ── Topbar ── */}
+      {/* Topbar */}
       <TopBar
         from={from}
         scanState={scanState}
         onShare={() => setShowShare(true)}
-        onSidebarToggle={() => setSidebarOpen(o => !o)}
+        onSidebarToggle={() => {}}
         onReset={handleReset}
       />
 
-<LandButton
-  onLand={handleLanded}
-  onManualLocation={handleSetFrom}
-  hasLocation={!!from}
-  scanning={scanState === 'scanning'}
-/>
+      {/* Land button */}
+      <LandButton
+        onLand={handleLanded}
+        onManualLocation={handleSetFrom}
+        hasLocation={!!from}
+        scanning={scanState === 'scanning'}
+      />
 
-      {/* ── Bottom panel ── */}
+      {/* Bottom panel */}
       <BottomPanel
         from={from}
         scanResults={scanResults}
@@ -266,33 +255,26 @@ export default function App() {
         homeRoutesLoading={homeRoutesLoading}
       />
 
-      {/* ── Departure board (tapped marker) ── */}
+      {/* Departure board */}
       {selectedItem && (
         <DepartureBoard
           item={selectedItem}
           walkInfo={selectedWalk}
           onClose={() => { setSelectedItem(null); setSelectedWalk(null) }}
-          onGetMeHome={(item) => {
+          onGetMeHome={() => {
             setSelectedItem(null)
-            // Pre-fill to field if not set, then prompt
-            if (!to) showToast('Enter your destination to get routes home')
+            if (!to) showToast('Enter your destination above to find routes home')
           }}
         />
       )}
 
-      {/* ── Share panel ── */}
+      {/* Share panel */}
       {showShare && (
-        <SharePanel
-          from={from} to={to}
-          onClose={() => setShowShare(false)}
-          showToast={showToast}
-        />
+        <SharePanel from={from} to={to} onClose={() => setShowShare(false)} showToast={showToast}/>
       )}
 
-      {/* ── Toasts ── */}
       <ToastStack toasts={toasts}/>
 
-      {/* Leaflet attribution offset */}
       <style>{`
         .leaflet-control-zoom { margin-bottom: calc(var(--panel-h) + 10px) !important; margin-right: 12px !important; }
         .leaflet-control-attribution { margin-bottom: var(--panel-h) !important; }
