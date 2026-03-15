@@ -43,6 +43,22 @@ export default function App() {
     drawRoutes, flyTo, flyToBounds, fitItems,
   } = useMap(mapRef)
 
+  // ── Setup map longpress ──────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    map._longPressCallback = async (lat, lon) => {
+      showToast('📍 Setting landing location…')
+      try {
+        const data = await reverseGeocode(lat, lon)
+        const name = data.display_name?.split(',').slice(0,3).join(',').trim() || \`\${lat.toFixed(5)}, \${lon.toFixed(5)}\`
+        await handleSetFrom({ lat, lon, name })
+      } catch {
+        await handleSetFrom({ lat, lon, name: \`\${lat.toFixed(5)}, \${lon.toFixed(5)}\` })
+      }
+    }
+  }, [mapRef.current, handleSetFrom, showToast])
+
   // ── Parse URL on load ─────────────────────────
   useEffect(() => {
     const { from: urlFrom, to: urlTo } = parseUrlParams()

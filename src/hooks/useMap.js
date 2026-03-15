@@ -25,39 +25,27 @@ const MARKER_CFG = {
 
 function markerHTML(type, isNearest = false) {
   const cfg = MARKER_CFG[type] || MARKER_CFG.bus
-  const s   = cfg.size
-  const pulse = isNearest ? `
-    <div style="
-      position:absolute;top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      width:${s*2}px;height:${s*2}px;border-radius:50%;
-      border:2px solid ${cfg.color};opacity:0.5;
-      animation:pulseRing 1.8s ease-out infinite;
-    "></div>` : ''
-
-  if (cfg.shape === 'diamond') {
-    return `
-      <div style="position:relative;width:${s}px;height:${s}px">
-        ${pulse}
-        <div style="
-          width:${s}px;height:${s}px;
-          background:${cfg.color};
-          border:2px solid rgba(255,255,255,0.8);
-          transform:rotate(45deg);
-          box-shadow:0 0 ${isNearest?16:8}px ${cfg.color}88;
-        "></div>
-      </div>`
+  const pulse = isNearest ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${cfg.color};opacity:0.5;animation:pulseRing 1.8s ease-out infinite;"></div>` : ''
+  const icons = {
+    bus: '🚌', bus_station: '🚌', train: '🚆', tram: '🚋',
+    metro: '🚇', taxi: '🚕', car_rental: '🚗', car_share: '🔑',
+    cycle: '🚲', scooter: '🛴', ferry: '⛴️', coach: '🚌',
+    airport: '✈️', helipad: '🚁'
   }
-  return `
-    <div style="position:relative;width:${s}px;height:${s}px">
-      ${pulse}
-      <div style="
-        width:${s}px;height:${s}px;border-radius:50%;
-        background:${cfg.color};
-        border:2px solid rgba(255,255,255,0.8);
-        box-shadow:0 0 ${isNearest?14:6}px ${cfg.color}88;
-      "></div>
-    </div>`
+  const emoji = icons[type] || '📍'
+  const size = isNearest ? 32 : 26
+  return `<div style="position:relative;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;">
+    ${pulse}
+    <div style="
+      width:${size}px;height:${size}px;border-radius:8px;
+      background:${cfg.color}22;
+      border:2px solid ${cfg.color}88;
+      display:flex;align-items:center;justify-content:center;
+      font-size:${isNearest?18:14}px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.4);
+      backdrop-filter:blur(4px);
+    ">${emoji}</div>
+  </div>`
 }
 
 function locationHTML(color, glow) {
@@ -94,6 +82,19 @@ export function useMap(containerRef) {
     })
     L.tileLayer(TILES, { attribution: ATTRIB, subdomains: 'abcd', maxZoom: 20 }).addTo(map)
     L.control.zoom({ position: 'bottomright' }).addTo(map)
+
+    // Long press to drop pin
+    let pressTimer = null
+    map.on('mousedown touchstart', (e) => {
+      pressTimer = setTimeout(() => {
+        const { lat, lng } = e.latlng
+        if (map._longPressCallback) map._longPressCallback(lat, lng)
+      }, 600)
+    })
+    map.on('mouseup touchend mousemove', () => {
+      clearTimeout(pressTimer)
+    })
+
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
   }, [])

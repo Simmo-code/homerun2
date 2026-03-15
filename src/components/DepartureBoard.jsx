@@ -223,8 +223,14 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
                 background: `${modeColor}15`,
               }}>{modeLabel.toUpperCase()}</span>
               {walkInfo && (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
-                  🚶 {fmtWalk(walkInfo.distance)} · {fmtDist(walkInfo.distance)}
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '11px',
+                  color: 'var(--live)', fontWeight: 600,
+                  padding: '2px 8px', borderRadius: '4px',
+                  background: 'rgba(0,230,118,0.1)',
+                  border: '1px solid rgba(0,230,118,0.2)',
+                }}>
+                  🚶 {fmtWalk(walkInfo.distance)} walk from you
                 </span>
               )}
               {item.operator && (
