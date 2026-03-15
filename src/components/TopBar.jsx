@@ -1,5 +1,5 @@
 // TopBar v2 — minimal strip with scan status
-export default function TopBar({ from, scanState, onShare, onSidebarToggle }) {
+export default function TopBar({ from, scanState, onShare, onSidebarToggle, onReset }) {
   const scanLabel = {
     idle:     null,
     scanning: 'SCANNING…',

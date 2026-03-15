@@ -176,6 +176,21 @@ export default function App() {
     showToast('🏠 Home saved', 'success')
   }, [to, showToast])
 
+
+  // ── Reset everything ──────────────────────────
+  const handleReset = useCallback(() => {
+    setFrom(null)
+    setTo(null)
+    setScanState('idle')
+    setScanResults(EMPTY_SCAN)
+    setLocalTaxis([])
+    setHomeRoutes([])
+    setActiveRouteIdx(0)
+    setSelectedItem(null)
+    setSelectedWalk(null)
+    drawRoutes([], 0)
+  }, [drawRoutes])
+
   // ── Keyboard ──────────────────────────────────
   useEffect(() => {
     const h = (e) => { if (e.key === 'Escape') { setSelectedItem(null); setShowShare(false) } }
@@ -207,6 +222,7 @@ export default function App() {
         scanState={scanState}
         onShare={() => setShowShare(true)}
         onSidebarToggle={() => setSidebarOpen(o => !o)}
+        onReset={handleReset}
       />
 
 <LandButton
