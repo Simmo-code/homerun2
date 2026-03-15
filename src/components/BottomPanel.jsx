@@ -240,7 +240,7 @@ export default function BottomPanel({
   from, scanResults, localTaxis, scanState,
   homeRoutes, activeRouteIdx, onRouteSelect,
   to, onToChange, onToClear,
-  onComputeHome, onMarkerClick,
+  onComputeHome, onMarkerClick, onGetMeHome,
   geocodeSearch, homeRoutesLoading,
 }) {
   const [tab, setTab]       = useState('NEARBY')

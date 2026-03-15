@@ -4,6 +4,7 @@ import TopBar        from './components/TopBar'
 import LandButton    from './components/LandButton'
 import BottomPanel   from './components/BottomPanel'
 import DepartureBoard from './components/DepartureBoard'
+import GetMeHome from './components/GetMeHome'
 import { ToastStack, SharePanel } from './components/Overlays'
 import { useMap }    from './hooks/useMap'
 import { useLiveBuses } from './hooks/useLiveBuses'
@@ -29,6 +30,7 @@ export default function App() {
   const [homeRoutes,        setHomeRoutes]       = useState([])
   const [activeRouteIdx,    setActiveRouteIdx]   = useState(0)
   const [homeRoutesLoading, setHomeRoutesLoading]= useState(false)
+  const [showGetHome, setShowGetHome] = useState(false)
   const [showShare,         setShowShare]        = useState(false)
   const [home,              setHome]             = useState(() => {
     try { return JSON.parse(localStorage.getItem('homerun_home') || 'null') } catch { return null }
@@ -254,6 +256,7 @@ export default function App() {
         onToClear={() => { setTo(null); setHomeRoutes([]) }}
         onComputeHome={handleComputeHome}
         onMarkerClick={handleMarkerClick}
+        onGetMeHome={() => setShowGetHome(true)}
         geocodeSearch={geocodeSearch}
         homeRoutesLoading={homeRoutesLoading}
       />
@@ -269,6 +272,10 @@ export default function App() {
             if (!to) showToast('Enter your destination above to find routes home')
           }}
         />
+      )}
+
+      {showGetHome && from && to && (
+        <GetMeHome from={from} to={to} onClose={() => setShowGetHome(false)}/>
       )}
 
       {/* Share panel */}
