@@ -209,12 +209,12 @@ export default function App() {
         onSidebarToggle={() => setSidebarOpen(o => !o)}
       />
 
-      {/* ── Land button ── */}
-      <LandButton
-        onLand={handleLanded}
-        hasLocation={!!from}
-        scanning={scanState === 'scanning'}
-      />
+<LandButton
+  onLand={handleLanded}
+  onManualLocation={handleSetFrom}
+  hasLocation={!!from}
+  scanning={scanState === 'scanning'}
+/>
 
       {/* ── Bottom panel ── */}
       <BottomPanel
