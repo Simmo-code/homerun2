@@ -51,10 +51,10 @@ export default function App() {
       showToast('📍 Setting landing location…')
       try {
         const data = await reverseGeocode(lat, lon)
-        const name = data.display_name?.split(',').slice(0,3).join(',').trim() || \`\${lat.toFixed(5)}, \${lon.toFixed(5)}\`
+        const name = data.display_name?.split(',').slice(0,3).join(',').trim() || `${lat.toFixed(5)}, ${lon.toFixed(5)}`
         await handleSetFrom({ lat, lon, name })
       } catch {
-        await handleSetFrom({ lat, lon, name: \`\${lat.toFixed(5)}, \${lon.toFixed(5)}\` })
+        await handleSetFrom({ lat, lon, name: `${lat.toFixed(5)}, ${lon.toFixed(5)}` })
       }
     }
   }, [mapRef.current, handleSetFrom, showToast])
