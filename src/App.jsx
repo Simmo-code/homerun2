@@ -42,7 +42,7 @@ export default function App() {
     drawRoutes, flyTo, flyToBounds, fitItems,
   } = useMap(mapRef)
 
-  const { buses, lastUpdate } = useLiveBuses(leafletMapRef, from)
+  const { buses, count: busCount, lastUpdate, status: busStatus } = useLiveBuses(leafletMapRef, from, scanResults)
 
   // ── Parse URL on load ─────────────────────────
   useEffect(() => {

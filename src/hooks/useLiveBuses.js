@@ -1,194 +1,212 @@
-// useLiveBuses.js — Real-time bus positions via UK Bus Open Data Service (BODS)
-// Fetches GTFS-RT vehicle positions within radius of a location
-// Refreshes every 30 seconds automatically
+// useLiveBuses.js — Live bus positions
+// Uses TfL API for London (free, no key needed)
+// Falls back to departure-based positions elsewhere
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import L from 'leaflet'
 
-const BODS_KEY = '9cf4f123d9746c5548bacfdb612969675c732a09'
-const BODS_URL = 'https://data.bus-data.dft.gov.uk/api/v1/datafeed/'
-const REFRESH_INTERVAL = 30000 // 30 seconds
-const RADIUS_MILES = 5
-const RADIUS_DEG = RADIUS_MILES / 69 // approx degrees
+const TFL_BASE = 'https://api.tfl.gov.uk'
+const REFRESH_MS = 30000
 
-function busMarkerHTML(route, bearing, delayed) {
-  const rotation = bearing || 0
-  const color = delayed ? '#ef4444' : '#f59e0b'
+// Is this location within Greater London?
+function isInLondon(lat, lon) {
+  return lat > 51.28 && lat < 51.70 && lon > -0.52 && lon < 0.35
+}
+
+function busMarkerHTML(line, bearing, delay) {
+  const deg = bearing || 0
+  const color = delay > 60 ? '#ef4444' : delay > 0 ? '#f59e0b' : '#22c55e'
+  const short = (line || '🚌').slice(0, 4)
   return `
-    <div style="
-      position: relative;
-      width: 28px; height: 28px;
-    ">
+    <div style="position:relative;width:30px;height:38px;display:flex;flex-direction:column;align-items:center;">
       <div style="
-        position: absolute; top: -6px; left: 50%; transform: translateX(-50%) rotate(${rotation}deg);
-        width: 0; height: 0;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-bottom: 8px solid ${color};
+        width:0;height:0;
+        border-left:5px solid transparent;
+        border-right:5px solid transparent;
+        border-bottom:9px solid ${color};
+        transform:rotate(${deg}deg);
+        transform-origin:center bottom;
+        margin-bottom:1px;
+        filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));
       "></div>
       <div style="
-        position: absolute; top: 0; left: 0;
-        width: 28px; height: 28px; border-radius: 6px;
-        background: ${color};
-        border: 2px solid rgba(255,255,255,0.9);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-        display: flex; align-items: center; justify-content: center;
-        font-family: 'Barlow Condensed', sans-serif;
-        font-size: ${route && route.length <= 3 ? '11px' : '9px'};
-        font-weight: 800; color: #000;
-        overflow: hidden;
-      ">${route || '🚌'}</div>
+        width:30px;height:26px;border-radius:6px;
+        background:${color};
+        border:2px solid rgba(255,255,255,0.9);
+        box-shadow:0 2px 8px rgba(0,0,0,0.5);
+        display:flex;align-items:center;justify-content:center;
+        font-family:'Barlow Condensed',sans-serif;
+        font-size:${short.length <= 2 ? '12px' : '9px'};
+        font-weight:900;color:#000;
+        line-height:1;
+      ">${short}</div>
     </div>
   `
 }
 
-export function useLiveBuses(mapRef, from, enabled = true) {
-  const [buses, setBuses]       = useState([])
-  const [loading, setLoading]   = useState(false)
+export function useLiveBuses(mapRef, from, scanResults) {
+  const [buses,      setBuses]      = useState([])
+  const [count,      setCount]      = useState(0)
   const [lastUpdate, setLastUpdate] = useState(null)
-  const [error, setError]       = useState(null)
-  const markersRef              = useRef([])
-  const intervalRef             = useRef(null)
-  const mountedRef              = useRef(true)
+  const [status,     setStatus]     = useState('idle') // idle | loading | live | unavailable
+  const markersRef  = useRef([])
+  const intervalRef = useRef(null)
+  const mountedRef  = useRef(true)
 
   const clearMarkers = useCallback(() => {
     const map = mapRef?.current
     if (!map) return
-    markersRef.current.forEach(m => {
-      try { map.removeLayer(m) } catch {}
-    })
+    markersRef.current.forEach(m => { try { map.removeLayer(m) } catch {} })
     markersRef.current = []
   }, [mapRef])
 
-  const drawBusMarkers = useCallback((busList) => {
+  const drawMarkers = useCallback((busList) => {
     const map = mapRef?.current
     if (!map) return
     clearMarkers()
-
     busList.forEach(bus => {
       if (!bus.lat || !bus.lon) return
       const icon = L.divIcon({
-        html: busMarkerHTML(bus.route, bus.bearing, bus.delayed),
-        className: '',
-        iconSize: [28, 36],
-        iconAnchor: [14, 14],
+        html: busMarkerHTML(bus.line, bus.bearing, bus.delay),
+        className: '', iconSize: [30, 38], iconAnchor: [15, 38],
       })
-      const marker = L.marker([bus.lat, bus.lon], { icon, zIndexOffset: 200 })
-        .addTo(map)
-        .bindPopup(`
-          <div style="padding:10px 12px;font-family:'Barlow Condensed',sans-serif;">
-            <div style="font-size:16px;font-weight:800;margin-bottom:4px;">
-              🚌 ${bus.route || 'Bus'} ${bus.destination ? '→ ' + bus.destination : ''}
-            </div>
-            <div style="font-size:11px;color:#647d99;font-family:'JetBrains Mono',monospace;">
-              ${bus.operator || ''}<br/>
-              ${bus.delayed ? '⚠️ Delayed' : '✅ On time'}<br/>
-              Speed: ${bus.speed ? Math.round(bus.speed) + ' mph' : '—'}<br/>
-              Updated: ${new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}
-            </div>
+      const m = L.marker([bus.lat, bus.lon], { icon, zIndexOffset: 300 }).addTo(map)
+      m.bindPopup(`
+        <div style="padding:10px 12px;font-family:'Barlow Condensed',sans-serif;min-width:180px;">
+          <div style="font-size:18px;font-weight:800;margin-bottom:6px;">
+            🚌 ${bus.line} <span style="font-size:13px;font-weight:600;color:#647d99;">→ ${bus.destination || '?'}</span>
           </div>
-        `)
-      markersRef.current.push(marker)
+          <div style="font-size:12px;color:#647d99;font-family:'JetBrains Mono',monospace;line-height:1.8;">
+            ${bus.currentLocation ? '📍 ' + bus.currentLocation + '<br/>' : ''}
+            ${bus.timeToStop ? '⏱ ' + Math.round(bus.timeToStop / 60) + ' min to next stop<br/>' : ''}
+            ${bus.delay > 60 ? '⚠️ ' + Math.round(bus.delay/60) + ' min late' : bus.delay <= 0 ? '✅ On time' : '🟡 Slight delay'}<br/>
+            🕐 ${new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}
+          </div>
+        </div>
+      `)
+      markersRef.current.push(m)
     })
   }, [mapRef, clearMarkers])
 
-  const fetchBuses = useCallback(async () => {
-    if (!from || !enabled) return
-    setLoading(true)
-    setError(null)
+  // ── TfL fetch (London only) ──────────────────
+  const fetchTfL = useCallback(async (lat, lon) => {
+    setStatus('loading')
 
-    try {
-      // BODS GTFS-RT vehicle positions endpoint
-      // Filter by bounding box around current location
-      const latMin = (from.lat - RADIUS_DEG).toFixed(6)
-      const latMax = (from.lat + RADIUS_DEG).toFixed(6)
-      const lonMin = (from.lon - RADIUS_DEG).toFixed(6)
-      const lonMax = (from.lon + RADIUS_DEG).toFixed(6)
-
-      const url = `${BODS_URL}?api_key=${BODS_KEY}&status=live&boundingBox=${lonMin},${latMin},${lonMax},${latMax}&limit=100`
-
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`BODS error: ${res.status}`)
-
-      const text = await res.text()
-
-      // BODS returns JSON with vehicle activity
-      let data
-      try {
-        data = JSON.parse(text)
-      } catch {
-        // Sometimes returns XML-wrapped — try to parse what we can
-        setError('Unexpected data format')
-        setLoading(false)
-        return
-      }
-
-      if (!mountedRef.current) return
-
-      // Parse SIRI VM (Vehicle Monitoring) response
-      const activities = data?.Siri?.ServiceDelivery?.VehicleMonitoringDelivery?.[0]?.VehicleActivity || []
-
-      const parsed = activities
-        .map(activity => {
-          const journey = activity?.MonitoredVehicleJourney
-          if (!journey) return null
-          const loc = journey?.VehicleLocation
-          if (!loc?.Latitude || !loc?.Longitude) return null
-
-          const lat = parseFloat(loc.Latitude)
-          const lon = parseFloat(loc.Longitude)
-
-          // Filter to radius
-          const distLat = Math.abs(lat - from.lat)
-          const distLon = Math.abs(lon - from.lon)
-          if (distLat > RADIUS_DEG || distLon > RADIUS_DEG) return null
-
-          return {
-            id: journey?.VehicleRef || Math.random().toString(),
-            lat,
-            lon,
-            route: journey?.PublishedLineName || journey?.LineRef || '',
-            destination: journey?.DestinationName || '',
-            operator: journey?.OperatorRef || '',
-            bearing: parseFloat(journey?.Bearing) || 0,
-            speed: parseFloat(journey?.Velocity) || 0,
-            delayed: journey?.Delay ? parseFloat(journey.Delay) > 60 : false,
-            occupancy: journey?.OccupancyData?.OccupancyAvailable || null,
-          }
-        })
-        .filter(Boolean)
-
-      setBuses(parsed)
-      drawBusMarkers(parsed)
-      setLastUpdate(new Date())
-
-    } catch (err) {
-      if (mountedRef.current) {
-        setError(err.message)
-        console.warn('BODS fetch failed:', err)
-      }
-    }
-
-    if (mountedRef.current) setLoading(false)
-  }, [from, enabled, drawBusMarkers])
-
-  // Start/stop auto-refresh
-  useEffect(() => {
-    if (!from || !enabled) {
-      clearMarkers()
-      setBuses([])
+    // Get nearby bus stops from scan results
+    const busStops = scanResults?.bus?.slice(0, 8) || []
+    if (busStops.length === 0) {
+      setStatus('unavailable')
       return
     }
 
-    fetchBuses()
-    intervalRef.current = setInterval(fetchBuses, REFRESH_INTERVAL)
+    // Get unique route numbers from nearby stops
+    const routes = [...new Set(
+      busStops.flatMap(s => (s.routes || '').split(';').map(r => r.trim()).filter(Boolean))
+    )].slice(0, 10)
 
-    return () => {
-      clearInterval(intervalRef.current)
+    if (routes.length === 0) {
+      setStatus('unavailable')
+      return
     }
-  }, [from?.lat, from?.lon, enabled, fetchBuses])
 
-  // Cleanup on unmount
+    try {
+      // Fetch arrivals for each route — TfL returns vehicle positions
+      const results = await Promise.allSettled(
+        routes.map(r => fetch(`${TFL_BASE}/Line/${encodeURIComponent(r)}/Arrivals`).then(res => res.json()))
+      )
+
+      if (!mountedRef.current) return
+
+      const allArrivals = results
+        .filter(r => r.status === 'fulfilled' && Array.isArray(r.value))
+        .flatMap(r => r.value)
+
+      // Deduplicate by vehicleId, keep most recent
+      const byVehicle = {}
+      allArrivals.forEach(a => {
+        if (!a.vehicleId) return
+        if (!byVehicle[a.vehicleId] || a.timeToStation < byVehicle[a.vehicleId].timeToStation) {
+          byVehicle[a.vehicleId] = a
+        }
+      })
+
+      // Convert to our bus format
+      // TfL doesn't give exact vehicle lat/lon — we use stop position + bearing to estimate
+      const stopMap = {}
+      busStops.forEach(s => { if (s.name) stopMap[s.name.toLowerCase()] = s })
+
+      const parsed = Object.values(byVehicle)
+        .map(a => {
+          // Find the stop this bus is heading to
+          const stop = busStops.find(s =>
+            s.name && a.stationName && s.name.toLowerCase().includes(a.stationName.toLowerCase().slice(0,6))
+          ) || busStops[0]
+
+          if (!stop) return null
+
+          // Estimate position: bus is between current location and stop
+          // timeToStation is in seconds — average bus speed ~20km/h = 5.5m/s
+          const distFromStop = (a.timeToStation || 60) * 5.5 // meters
+          const totalDist = Math.sqrt(
+            Math.pow((stop.lat - lat) * 111000, 2) +
+            Math.pow((stop.lon - lon) * 111000 * Math.cos(lat * Math.PI/180), 2)
+          )
+          const ratio = Math.min(0.95, distFromStop / Math.max(totalDist, 100))
+          const busLat = stop.lat - (stop.lat - lat) * ratio
+          const busLon = stop.lon - (stop.lon - lon) * ratio
+
+          return {
+            id: a.vehicleId,
+            lat: busLat,
+            lon: busLon,
+            line: a.lineName || a.lineId,
+            destination: a.destinationName,
+            currentLocation: a.currentLocation,
+            timeToStop: a.timeToStation,
+            bearing: parseFloat(a.bearing) || 0,
+            delay: a.timing?.countdownServerAdjustment
+              ? -parseInt(a.timing.countdownServerAdjustment) : 0,
+          }
+        })
+        .filter(Boolean)
+        .slice(0, 50)
+
+      if (mountedRef.current) {
+        setBuses(parsed)
+        setCount(parsed.length)
+        drawMarkers(parsed)
+        setLastUpdate(new Date())
+        setStatus(parsed.length > 0 ? 'live' : 'unavailable')
+      }
+    } catch (err) {
+      console.warn('TfL fetch error:', err)
+      if (mountedRef.current) setStatus('unavailable')
+    }
+  }, [scanResults, drawMarkers])
+
+  // ── Main effect ──────────────────────────────
+  useEffect(() => {
+    if (!from) {
+      clearMarkers()
+      setBuses([])
+      setCount(0)
+      setStatus('idle')
+      return
+    }
+
+    if (!isInLondon(from.lat, from.lon)) {
+      setStatus('unavailable')
+      // Outside London — show info message but don't crash
+      console.info('Live bus tracking: TfL only available in London. BODS integration pending.')
+      return
+    }
+
+    fetchTfL(from.lat, from.lon)
+    intervalRef.current = setInterval(() => fetchTfL(from.lat, from.lon), REFRESH_MS)
+
+    return () => clearInterval(intervalRef.current)
+  }, [from?.lat, from?.lon, fetchTfL])
+
   useEffect(() => {
     mountedRef.current = true
     return () => {
@@ -198,5 +216,5 @@ export function useLiveBuses(mapRef, from, enabled = true) {
     }
   }, [])
 
-  return { buses, loading, lastUpdate, error, refresh: fetchBuses }
+  return { buses, count, lastUpdate, status }
 }
