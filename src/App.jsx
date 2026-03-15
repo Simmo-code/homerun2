@@ -6,6 +6,7 @@ import BottomPanel   from './components/BottomPanel'
 import DepartureBoard from './components/DepartureBoard'
 import { ToastStack, SharePanel } from './components/Overlays'
 import { useMap }    from './hooks/useMap'
+import { useLiveBuses } from './hooks/useLiveBuses'
 import { useToast }  from './hooks/useToast'
 import {
   reverseGeocode, geocodeSearch, deepScan, scanLocalTaxis,
@@ -40,6 +41,8 @@ export default function App() {
     drawScanRings, drawTransportMarkers, drawWalkLines,
     drawRoutes, flyTo, flyToBounds, fitItems,
   } = useMap(mapRef)
+
+  const { buses, lastUpdate } = useLiveBuses(leafletMapRef, from)
 
   // ── Parse URL on load ─────────────────────────
   useEffect(() => {
