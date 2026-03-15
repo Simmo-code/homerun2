@@ -360,7 +360,7 @@ function generatePlaceholderDeps(item) {
     const t = new Date(now.getTime() + (i * 15 + Math.floor(Math.random() * 8)) * 60000)
     return {
       line: routes[i % routes.length],
-      destination: 'Town Centre',
+      destination: item.type === 'train' ? 'See board at station' : 'Town Centre',
       scheduledTime: t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
       minutesUntil: Math.round((t - now) / 60000),
       color: item.type === 'train' ? '#00d4ff' : '#f59e0b',

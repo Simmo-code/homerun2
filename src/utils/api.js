@@ -76,21 +76,21 @@ export async function deepScan(lat, lon) {
   const query = `
 [out:json][timeout:25];
 (
-  node["highway"="bus_stop"](around:1000,${lat},${lon});
-  node["public_transport"="stop_position"]["bus"="yes"](around:1000,${lat},${lon});
-  node["public_transport"="platform"](around:1000,${lat},${lon});
+  node["highway"="bus_stop"](around:8000,${lat},${lon});
+  node["public_transport"="stop_position"]["bus"="yes"](around:8000,${lat},${lon});
+  node["public_transport"="platform"](around:8000,${lat},${lon});
 
-  node["railway"="station"](around:8000,${lat},${lon});
-  node["railway"="halt"](around:5000,${lat},${lon});
-  node["railway"="tram_stop"](around:3000,${lat},${lon});
+  node["railway"="station"](around:32000,${lat},${lon});
+  node["railway"="halt"](around:32000,${lat},${lon});
+  node["railway"="tram_stop"](around:10000,${lat},${lon});
   node["railway"="subway_entrance"](around:2000,${lat},${lon});
 
-  node["amenity"="taxi"](around:3000,${lat},${lon});
+  node["amenity"="taxi"](around:8000,${lat},${lon});
   node["amenity"="car_rental"](around:5000,${lat},${lon});
   node["amenity"="car_sharing"](around:3000,${lat},${lon});
   node["amenity"="bicycle_rental"](around:2000,${lat},${lon});
-  node["amenity"="ferry_terminal"](around:10000,${lat},${lon});
-  node["amenity"="bus_station"](around:5000,${lat},${lon});
+  node["amenity"="ferry_terminal"](around:32000,${lat},${lon});
+  node["amenity"="bus_station"](around:16000,${lat},${lon});
 
   node["aeroway"="aerodrome"](around:30000,${lat},${lon});
   node["aeroway"="helipad"](around:15000,${lat},${lon});

@@ -129,9 +129,9 @@ export function useMap(containerRef) {
     const L2 = layersRef.current
     L2.rings.forEach(r => map.removeLayer(r)); L2.rings = []
     const ringCfg = [
-      { r: 800,   color: '#00e5ff', opacity: 0.08, label: '800m' },
-      { r: 5000,  color: '#fbbf24', opacity: 0.05, label: '5km'  },
-      { r: 20000, color: '#ff6b35', opacity: 0.03, label: '20km' },
+      { r: 1600,  color: '#00e5ff', opacity: 0.08, label: '1mi' },
+      { r: 8000,  color: '#fbbf24', opacity: 0.05, label: '5mi'  },
+      { r: 32000, color: '#ff6b35', opacity: 0.03, label: '20mi' },
     ]
     ringCfg.forEach(cfg => {
       const circle = L.circle([lat, lon], {
