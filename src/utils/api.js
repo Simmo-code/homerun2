@@ -341,11 +341,12 @@ export async function computeHomeRoutes(from, to, scanResults) {
     routes.push({
       id: 'walk', mode: 'walk', icon: '🚶', color: 'var(--walk)',
       label: 'Walk entire route',
-      duration: walkR.value.duration,
+      duration: walkR.value.distance / 83 * 60,
       distance: walkR.value.distance,
       geometry: walkR.value.geometry,
       legs: [{ icon: '🚶', color: 'var(--walk)', label: 'Walk', duration: walkR.value.duration }],
-      summary: `Walk ${fmtDuration(walkR.value.duration)} · ${fmtDist(walkR.value.distance)}`,
+      summary: `Walk ${fmtDuration(walkR.value.distance / 83 * 60)} · ${fmtDist(walkR.value.distance)}`,
+      duration: walkR.value.distance / 83 * 60,
       costEstimate: 'Free',
     })
   }
@@ -365,7 +366,7 @@ export async function computeHomeRoutes(from, to, scanResults) {
     routes.push({
       id: 'taxi', mode: 'taxi', icon: '🚕', color: 'var(--taxi)',
       label: 'Taxi / Ride-hail',
-      duration: driveR.value.duration * 1.1,
+      duration: driveR.value.duration * 1.15,
       distance: driveR.value.distance,
       geometry: driveR.value.geometry,
       legs: [{ icon: '🚕', color: 'var(--taxi)', label: 'Taxi', duration: driveR.value.duration }],
@@ -378,11 +379,12 @@ export async function computeHomeRoutes(from, to, scanResults) {
     routes.push({
       id: 'cycle', mode: 'cycle', icon: '🚴', color: 'var(--cycle)',
       label: 'Cycling',
-      duration: cycleR.value.duration,
+      duration: cycleR.value.distance / 250 * 60,
       distance: cycleR.value.distance,
       geometry: cycleR.value.geometry,
       legs: [{ icon: '🚴', color: 'var(--cycle)', label: 'Cycle', duration: cycleR.value.duration }],
-      summary: `Cycle ${fmtDuration(cycleR.value.duration)} · ${fmtDist(cycleR.value.distance)}`,
+      summary: `Cycle ${fmtDuration(cycleR.value.distance / 250 * 60)} · ${fmtDist(cycleR.value.distance)}`,
+      duration: cycleR.value.distance / 250 * 60,
       costEstimate: 'Free / hire cost',
     })
   }
