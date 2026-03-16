@@ -379,12 +379,13 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
                   fontFamily: 'var(--font-mono)', fontSize: '11px', lineHeight: 2,
                 }}>
                   <div style={{ fontSize: '28px', marginBottom: '8px' }}>🚂</div>
-                  <div style={{ color: 'var(--amber)', fontWeight: 700, marginBottom: '6px', letterSpacing: '1px' }}>
-                    HERITAGE RAILWAY
+                  <div style={{ color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px', letterSpacing: '1px' }}>
+                    NO LIVE DATA
                   </div>
                   <div style={{ color: 'var(--text-muted)' }}>
-                    This station is not on the National Rail network.<br/>
-                    No live departure data available.
+                    Live departures unavailable for this station.<br/>
+                    May be operated by a regional network<br/>
+                    not covered by National Rail OpenData.
                   </div>
                   {item.operator && (
                     <div style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>

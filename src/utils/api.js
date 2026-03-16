@@ -195,19 +195,12 @@ function classifyResults(elements, lat, lon) {
     }
     // Train
     else if (tags.railway === 'station' || tags.railway === 'halt') {
-      const isHeritage = (
-        tags.usage === 'tourism' ||
-        tags['railway:traffic_mode'] === 'tourism' ||
-        /narrow.gauge|miniature|steam.railway|heritage.railway|preserved.railway/i.test(
-          tags.operator || tags.network || tags.name || ''
-        )
-      )
       results.train.push({
         ...base,
-        type: isHeritage ? 'heritage' : 'train',
-        icon: isHeritage ? '🚂' : '🚆',
-        color: isHeritage ? 'var(--orange)' : 'var(--train)',
-        label: base.name || (isHeritage ? 'Heritage Railway' : 'Railway Station'),
+        type: 'train',
+        icon: '🚆',
+        color: 'var(--train)',
+        label: base.name || 'Railway Station',
         lines: tags['railway:ref'] || tags.network || '',
         operator: tags.operator || '',
         departures: [],
