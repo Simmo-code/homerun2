@@ -102,7 +102,7 @@ export async function fetchTrainDepartures(crs, numRows = 8) {
 
     if (!crs) return null
 
-  const endpoint = 'https://corsproxy.io/?' + encodeURIComponent(
+  const endpoint = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(
     'https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx'
   )
 
