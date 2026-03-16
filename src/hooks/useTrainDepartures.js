@@ -103,9 +103,7 @@ export async function fetchTrainDepartures(crs, numRows = 8) {
 
     if (!crs) return null
 
-  const endpoint = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(
-    'https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx'
-  )
+  const endpoint = 'https://falling-sound-fa1a.simmo-justin.workers.dev/'
 
   try {
     const res = await fetch(endpoint, {
