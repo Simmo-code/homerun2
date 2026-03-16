@@ -211,9 +211,14 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
         }
       } catch {}
  
-      // Last resort: show placeholder with routes from Overpass tags
-      setDepartures(generatePlaceholder(item))
-      setSource('placeholder')
+      // Only show placeholder for bus stops, not train stations
+      if (item.type !== 'train') {
+        setDepartures(generatePlaceholder(item))
+        setSource('placeholder')
+      } else {
+        setDepartures([])
+        setSource('heritage')
+      }
       setLoading(false)
     }
  
