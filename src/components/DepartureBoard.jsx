@@ -370,11 +370,22 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
  
               {!loading && departures.length === 0 && (
                 <div style={{
-                  textAlign: 'center', padding: '24px', color: 'var(--text-muted)',
-                  fontFamily: 'var(--font-mono)', fontSize: '11px', lineHeight: 1.8,
+                  textAlign: 'center', padding: '24px',
+                  fontFamily: 'var(--font-mono)', fontSize: '11px', lineHeight: 2,
                 }}>
-                  No live departure data available
-                  {item.routes && <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Routes: {item.routes}</div>}
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>🚂</div>
+                  <div style={{ color: 'var(--amber)', fontWeight: 700, marginBottom: '6px', letterSpacing: '1px' }}>
+                    HERITAGE RAILWAY
+                  </div>
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    This station is not on the National Rail network.<br/>
+                    No live departure data available.
+                  </div>
+                  {item.operator && (
+                    <div style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>
+                      Operator: {item.operator}
+                    </div>
+                  )}
                 </div>
               )}
  

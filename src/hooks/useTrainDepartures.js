@@ -179,7 +179,12 @@ function parseSOAP(xml, crs) {
       }
     })
 
-    return { stationName, crs, departures }
+    return { 
+      stationName, 
+      crs, 
+      departures,
+      isHeritage: departures.length === 0
+    }
   } catch (err) {
     console.warn('SOAP parse error:', err)
     return null
