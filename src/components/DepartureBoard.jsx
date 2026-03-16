@@ -187,7 +187,7 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
     const load = async () => {
       // Try National Rail first for train stations
       if (item.type === 'train') {
-        const crs = getCRS(item.label) || getCRS(item.name)
+        const crs = await getCRS(item.label) || await getCRS(item.name)
         if (crs) {
           const data = await fetchTrainDepartures(crs)
           if (data?.departures?.length > 0) {

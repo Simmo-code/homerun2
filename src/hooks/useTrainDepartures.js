@@ -95,10 +95,12 @@ export async function fetchTrainDepartures(crs, numRows = 8) {
   <soap:Body>
     <ldb:GetDepartureBoardRequest>
       <ldb:numRows>${numRows}</ldb:numRows>
-      <ldb:crs>${crs.toUpperCase()}</ldb:crs>
+      <ldb:crs>${(crs || "").toUpperCase()}</ldb:crs>
     </ldb:GetDepartureBoardRequest>
   </soap:Body>
 </soap:Envelope>`.trim()
+
+    if (!crs) return null
 
   const endpoint = 'https://corsproxy.io/?' + encodeURIComponent(
     'https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx'
