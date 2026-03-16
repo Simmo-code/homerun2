@@ -230,10 +230,10 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
   const isTransit = ['bus', 'bus_station', 'train', 'tram', 'metro', 'ferry', 'coach'].includes(item.type)
   const isTaxi    = ['taxi', 'car_rental', 'car_share'].includes(item.type)
   const isHire    = ['cycle', 'scooter'].includes(item.type)
-  const isTrain   = item.type === 'train'
+  const isTrain   = item.type === 'train' || item.type === 'heritage'
  
   const modeColors = {
-    bus: 'var(--bus)', bus_station: 'var(--bus)', train: 'var(--train)',
+    bus: 'var(--bus)', bus_station: 'var(--bus)', train: 'var(--train)', heritage: 'var(--orange)',
     tram: 'var(--coach)', metro: 'var(--cyan)', ferry: 'var(--ferry)',
     taxi: 'var(--taxi)', car_rental: 'var(--car)', cycle: 'var(--cycle)',
     scooter: 'var(--scooter)', coach: 'var(--coach)',
@@ -241,7 +241,7 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
   const modeColor = modeColors[item.type] || 'var(--text-primary)'
  
   const modeLabels = {
-    bus: 'Bus Stop', bus_station: 'Bus Station', train: 'Railway Station',
+    bus: 'Bus Stop', bus_station: 'Bus Station', train: 'Railway Station', heritage: 'Heritage Railway',
     tram: 'Tram Stop', metro: 'Metro Station', ferry: 'Ferry Terminal',
     taxi: 'Taxi Rank', car_rental: 'Car Rental', car_share: 'Car Share',
     cycle: 'Cycle Hire', scooter: 'E-Scooter', coach: 'Coach Stop',

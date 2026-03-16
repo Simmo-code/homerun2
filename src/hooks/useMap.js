@@ -10,6 +10,7 @@ const MARKER_CFG = {
   bus:        { color: '#f59e0b', size: 14, shape: 'circle', emoji: '🚌' },
   bus_station:{ color: '#f59e0b', size: 20, shape: 'circle', emoji: '🚌' },
   train:      { color: '#00d4ff', size: 22, shape: 'diamond', emoji: '🚆' },
+  heritage:   { color: '#f97316', size: 22, shape: 'diamond', emoji: '🚂' },
   tram:       { color: '#ec4899', size: 16, shape: 'diamond', emoji: '🚋' },
   metro:      { color: '#00e5ff', size: 18, shape: 'diamond', emoji: '🚇' },
   taxi:       { color: '#ff6b35', size: 14, shape: 'circle', emoji: '🚕' },
