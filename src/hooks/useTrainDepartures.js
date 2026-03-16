@@ -130,18 +130,26 @@ function parseSOAP(xml, crs) {
     const fault = doc.querySelector('faultstring')
     if (fault) throw new Error(fault.textContent)
 
-    const stationName = doc.querySelector('locationName')?.textContent || crs
-    const services = [...doc.querySelectorAll('trainServices service')]
+    // Helper to get text from namespaced elements
+    const getText = (el, tag) => {
+      const found = el.getElementsByTagNameNS('*', tag)
+      return found.length > 0 ? found[0].textContent : null
+    }
+
+    const stationName = getText(doc, 'locationName') || crs
+    const services = [...doc.getElementsByTagNameNS('*', 'service')]
 
     const departures = services.map(svc => {
-      const std      = svc.querySelector('std')?.textContent
-      const etd      = svc.querySelector('etd')?.textContent
-      const platform = svc.querySelector('platform')?.textContent
-      const dest     = svc.querySelector('destination location destination')?.textContent ||
-                       svc.querySelector('destination location')?.textContent
-      const operator    = svc.querySelector('operator')?.textContent
-      const cancelled   = svc.querySelector('isCancelled')?.textContent === 'true'
-      const delayReason = svc.querySelector('delayReason')?.textContent
+      const std      = getText(svc, 'std')
+      const etd      = getText(svc, 'etd')
+      const platform = getText(svc, 'platform')
+      const destEls  = svc.getElementsByTagNameNS('*', 'destination')
+      const dest     = destEls.length > 0
+        ? getText(destEls[0], 'locationName')
+        : null
+      const operator    = getText(svc, 'operator')
+      const cancelled   = getText(svc, 'isCancelled') === 'true'
+      const delayReason = getText(svc, 'delayReason')
 
       let minutesUntil = null
       if (std) {
