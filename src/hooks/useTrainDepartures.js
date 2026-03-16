@@ -43,7 +43,8 @@ export async function getCRS(stationName) {
   const exact = stations.find(s =>
     s.stationName.toLowerCase() === clean
   )
-  if (exact) return exact.crsCode
+  if (exact) { console.log('CRS found:', clean, '->', exact.crsCode); return exact.crsCode }
+  console.log('CRS lookup failed for:', clean, '| tried exact match against', stations.length, 'stations')
 
   // Partial match
   const partial = stations.find(s =>
