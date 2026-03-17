@@ -185,6 +185,14 @@ export default function App() {
   }, [from, to, scanResults, drawRoutes, flyToBounds, showToast])
 
   // ── Reset everything ──────────────────────────
+  const handleLayerChange = (url) => {
+    const map = leafletMapRef.current
+    const toRemove = []
+    map.eachLayer(l => { if (l._url) toRemove.push(l) })
+    toRemove.forEach(l => map.removeLayer(l))
+    L.tileLayer(url, { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map)
+  }
+
   const handleReset = useCallback(() => {
     setFrom(null)
     setTo(null)

@@ -230,6 +230,14 @@ export function useMap(containerRef) {
     })
   }, [])
 
+  const switchTileLayer = useCallback((url) => {
+    const map = mapRef.current
+    const toRemove = []
+    map.eachLayer(l => { if (l._url) toRemove.push(l) })
+    toRemove.forEach(l => map.removeLayer(l))
+    L.tileLayer(url, { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map)
+  }, [])
+
   const flyTo = useCallback((lat, lon, zoom = 15) => {
     mapRef.current?.flyTo([lat, lon], zoom, { duration: 1 })
   }, [])
@@ -245,5 +253,5 @@ export function useMap(containerRef) {
     mapRef.current.flyToBounds(bounds, { padding: [60, 60], duration: 1.2, maxZoom: 15 })
   }, [])
 
-  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawRoutes, flyTo, flyToBounds, fitItems }
+  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer }
 }
