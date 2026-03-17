@@ -97,22 +97,34 @@ export function useMap(containerRef) {
     })
 
     // Mobile touch support
+    let touchMoved = false
     map.getContainer().addEventListener('touchstart', (e) => {
       if (e.touches.length !== 1) return
+      touchMoved = false
       const touch = e.touches[0]
+      const rect = map.getContainer().getBoundingClientRect()
       pressLatLng = map.containerPointToLatLng(
-        L.point(touch.clientX - map.getContainer().getBoundingClientRect().left,
-                touch.clientY - map.getContainer().getBoundingClientRect().top)
+        L.point(touch.clientX - rect.left, touch.clientY - rect.top)
       )
       pressTimer = setTimeout(() => {
-        if (pressLatLng && map._longPressCallback)
+        if (pressLatLng && !touchMoved && map._longPressCallback) {
+          // Vibrate to confirm long press
+          if (navigator.vibrate) navigator.vibrate(50)
           map._longPressCallback(pressLatLng.lat, pressLatLng.lng)
+        }
       }, 600)
     }, { passive: true })
 
+    map.getContainer().addEventListener('touchmove', (e) => {
+      touchMoved = true
+      clearTimeout(pressTimer)
+    }, { passive: true })
+
+    map.getContainer().addEventListener('touchend', () => {
+      clearTimeout(pressTimer)
+    }, { passive: true })
+
     map.on('mouseup mousemove', () => clearTimeout(pressTimer))
-    map.getContainer().addEventListener('touchend',   () => clearTimeout(pressTimer), { passive: true })
-    map.getContainer().addEventListener('touchmove',  () => clearTimeout(pressTimer), { passive: true })
 
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
