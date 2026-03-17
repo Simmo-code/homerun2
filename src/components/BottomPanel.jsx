@@ -31,25 +31,25 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
             {best.label}
           </span>
           {items.length > 1 && (
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
               +{items.length - 1} more
             </span>
           )}
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {best.routes && (
-            <span style={{ fontSize: '10px', color: color, fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: '12px', color: color, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
               {best.routes.split(';').slice(0,4).join(' · ')}
             </span>
           )}
           {best.operator && !best.routes && (
-            <span style={{ fontSize: '10px', color: 'var(--text-primary)' }}>{best.operator}</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{best.operator}</span>
           )}
         </div>
       </div>
 
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: color, fontWeight: 600 }}>
+        <div style={{ fontSize: '14px', fontFamily: 'var(--font-mono)', color: color, fontWeight: 700 }}>
           {fmtDist(best.dist)}
         </div>
         {walkMins !== null && (
@@ -59,7 +59,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
         )}
       </div>
 
-      <svg width="8" height="12" viewBox="0 0 8 12" fill="var(--text-muted)" style={{ flexShrink: 0 }}>
+      <svg width="10" height="16" viewBox="0 0 8 12" fill="var(--text-secondary)" style={{ flexShrink: 0 }}>
         <path d="M1 1l6 5-6 5"/>
       </svg>
     </div>
@@ -208,7 +208,7 @@ function DestSearch({ value, onChange, onClear, geocodeSearch }) {
               onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div style={{ fontWeight: 600 }}>{r.display_name.split(',').slice(0,2).join(', ')}</div>
-              <div style={{ fontSize: '10px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
                 {r.display_name.split(',').slice(2,4).join(',')}
               </div>
             </div>
