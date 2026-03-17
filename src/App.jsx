@@ -46,16 +46,6 @@ export default function App() {
 
   const { buses, count: busCount, lastUpdate, status: busStatus } = useLiveBuses(leafletMapRef, from, scanResults)
 
-  // ── Long press to set landing location
-  useEffect(() => {
-    setLongPressCallback((lat, lon) => {
-      handleSetFrom({ lat, lon, name: `${lat.toFixed(5)}, ${lon.toFixed(5)}` })
-      reverseGeocode(lat, lon).then(name => {
-        if (name) handleSetFrom({ lat, lon, name })
-      })
-    })
-  }, [setLongPressCallback, handleSetFrom])
-
   // ── Parse URL on load ─────────────────────────
   useEffect(() => {
     const { from: urlFrom, to: urlTo } = parseUrlParams()
@@ -135,6 +125,16 @@ export default function App() {
       { enableHighAccuracy: true, timeout: 14000, maximumAge: 0 }
     )
   }, [handleSetFrom, showToast])
+
+  // ── Long press to set landing location
+  useEffect(() => {
+    setLongPressCallback((lat, lon) => {
+      handleSetFrom({ lat, lon, name: lat.toFixed(5) + ', ' + lon.toFixed(5) })
+      reverseGeocode(lat, lon).then(name => {
+        if (name) handleSetFrom({ lat, lon, name })
+      })
+    })
+  }, [setLongPressCallback, handleSetFrom])
 
   // ── Long press on map to set location ────────
   useEffect(() => {
