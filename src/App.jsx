@@ -295,7 +295,7 @@ export default function App() {
 
       <style>{`
         .leaflet-control-zoom { margin-bottom: 100px !important; margin-right: 16px !important; } .leaflet-right { right: 0 !important; }
-        .leaflet-control-attribution { margin-bottom: var(--panel-h) !important; }
+        .leaflet-control-attribution { margin-bottom: 4px !important; position: fixed !important; bottom: 0 !important; right: 0 !important; }
       `}</style>
     </div>
   )

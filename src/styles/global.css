@@ -86,7 +86,7 @@ html, body {
 .leaflet-control-zoom { border: 1px solid var(--border-default) !important; border-radius: var(--radius-sm) !important; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important; }
 .leaflet-control-zoom a { background: var(--surface-1) !important; color: var(--text-secondary) !important; border-bottom: 1px solid var(--border-faint) !important; font-size: 16px !important; width: 30px !important; height: 30px !important; line-height: 30px !important; transition: all 0.15s; }
 .leaflet-control-zoom a:hover { background: var(--surface-2) !important; color: var(--cyan) !important; }
-.leaflet-control-attribution { background: rgba(6,9,15,0.8) !important; color: var(--text-muted) !important; font-size: 9px !important; font-family: var(--font-mono) !important; backdrop-filter: blur(8px); }
+.leaflet-control-attribution { background: rgba(6,9,15,0.8) !important; color: var(--text-muted) !important; font-size: 9px !important; font-family: var(--font-mono) !important; backdrop-filter: blur(8px); position: fixed !important; bottom: 4px !important; right: 4px !important; z-index: 500 !important; }
 .leaflet-control-attribution a { color: var(--text-secondary) !important; }
 .leaflet-popup-content-wrapper { background: var(--surface-1) !important; color: var(--text-primary) !important; border: 1px solid var(--border-default) !important; border-radius: var(--radius) !important; box-shadow: 0 16px 50px rgba(0,0,0,0.8) !important; padding: 0 !important; }
 .leaflet-popup-content { margin: 0 !important; font-family: var(--font-ui) !important; min-width: 240px; }
