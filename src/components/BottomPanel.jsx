@@ -243,31 +243,70 @@ export default function BottomPanel({
   onComputeHome, onMarkerClick, onGetMeHome,
   geocodeSearch, homeRoutesLoading,
 }) {
-  const [tab, setTab]       = useState('NEARBY')
-  const [expanded, setExpanded] = useState(false)
-
+  const [tab, setTab] = useState('NEARBY')
   const hasScan = scanState === 'done'
   const totalFound = Object.values(scanResults).flat().length + localTaxis.length
 
-  const panelH = expanded ? 'var(--panel-max)' : 'var(--panel-h)'
+  const SNAP_PEEK = 80
+  const SNAP_HALF = Math.round(window.innerHeight * 0.40)
+  const SNAP_FULL = Math.round(window.innerHeight * 0.85)
+  const SNAPS = [SNAP_PEEK, SNAP_HALF, SNAP_FULL]
+
+  const [panelH, setPanelH] = useState(SNAP_HALF)
+  const startY = useRef(0)
+  const startH = useRef(0)
+  const isDrag = useRef(false)
+
+  const snapTo = (h) => {
+    const s = SNAPS.reduce((a, b) => Math.abs(b-h) < Math.abs(a-h) ? b : a)
+    setPanelH(s)
+  }
+
+  useEffect(() => {
+    const move = (e) => {
+      if (!isDrag.current) return
+      const y = e.touches ? e.touches[0].clientY : e.clientY
+      const newH = Math.max(SNAP_PEEK, Math.min(SNAP_FULL, startH.current + startY.current - y))
+      setPanelH(newH)
+    }
+    const end = (e) => {
+      if (!isDrag.current) return
+      isDrag.current = false
+      const y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY
+      const newH = Math.max(SNAP_PEEK, Math.min(SNAP_FULL, startH.current + startY.current - y))
+      snapTo(newH)
+    }
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', end)
+    window.addEventListener('touchmove', move, { passive: true })
+    window.addEventListener('touchend', end)
+    return () => {
+      window.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', end)
+      window.removeEventListener('touchmove', move)
+      window.removeEventListener('touchend', end)
+    }
+  }, [])
 
   return (
     <div style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 700,
-      height: panelH, minHeight: 'var(--panel-min)',
+      height: panelH + 'px',
       background: 'rgba(6,9,15,0.97)', backdropFilter: 'blur(20px)',
       borderTop: '1px solid var(--border-default)',
       borderRadius: '16px 16px 0 0',
       display: 'flex', flexDirection: 'column',
-      transition: 'height 0.3s var(--ease)',
+      transition: isDrag.current ? 'none' : 'height 0.2s ease',
       boxShadow: '0 -8px 40px rgba(0,0,0,0.7)',
     }}>
       {/* Drag handle */}
       <div
-        onClick={() => setExpanded(e => !e)}
-        style={{ padding: '8px', display: 'flex', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+        onMouseDown={(e) => { isDrag.current=true; startY.current=e.clientY; startH.current=panelH }}
+        onTouchStart={(e) => { isDrag.current=true; startY.current=e.touches[0].clientY; startH.current=panelH }}
+        onClick={() => { const i=SNAPS.indexOf(panelH); setPanelH(SNAPS[(i+1)%SNAPS.length]) }}
+        style={{ padding: '10px', display: 'flex', justifyContent: 'center', cursor: 'ns-resize', flexShrink: 0, touchAction: 'none' }}
       >
-        <div style={{ width: '32px', height: '3px', borderRadius: '2px', background: 'var(--border-default)' }}/>
+        <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'var(--border-default)' }}/>
       </div>
 
       {/* Destination bar */}
