@@ -84,17 +84,35 @@ export function useMap(containerRef) {
     L.tileLayer(TILES, { attribution: ATTRIB, subdomains: 'abcd', maxZoom: 20 }).addTo(map)
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-    // Long press to drop pin
+    // Long press to drop pin — works on both desktop and mobile
     let pressTimer = null
-    map.on('mousedown touchstart', (e) => {
+    let pressLatLng = null
+
+    map.on('mousedown', (e) => {
+      pressLatLng = e.latlng
       pressTimer = setTimeout(() => {
-        const { lat, lng } = e.latlng
-        if (map._longPressCallback) map._longPressCallback(lat, lng)
+        if (pressLatLng && map._longPressCallback)
+          map._longPressCallback(pressLatLng.lat, pressLatLng.lng)
       }, 600)
     })
-    map.on('mouseup touchend mousemove', () => {
-      clearTimeout(pressTimer)
-    })
+
+    // Mobile touch support
+    map.getContainer().addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return
+      const touch = e.touches[0]
+      pressLatLng = map.containerPointToLatLng(
+        L.point(touch.clientX - map.getContainer().getBoundingClientRect().left,
+                touch.clientY - map.getContainer().getBoundingClientRect().top)
+      )
+      pressTimer = setTimeout(() => {
+        if (pressLatLng && map._longPressCallback)
+          map._longPressCallback(pressLatLng.lat, pressLatLng.lng)
+      }, 600)
+    }, { passive: true })
+
+    map.on('mouseup mousemove', () => clearTimeout(pressTimer))
+    map.getContainer().addEventListener('touchend',   () => clearTimeout(pressTimer), { passive: true })
+    map.getContainer().addEventListener('touchmove',  () => clearTimeout(pressTimer), { passive: true })
 
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
