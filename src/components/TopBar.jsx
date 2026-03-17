@@ -54,7 +54,7 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
           ) : (
             <>
               <div style={{ width: '16px', height: '2px', borderRadius: '1px', background: 'var(--cyan)' }}/>
-              <div style={{ width: '12px', height: '2px', borderRadius: '1px', background: 'var(--cyan)', alignSelf: 'flex-start', marginLeft: '2px' }}/>
+              <div style={{ width: '12px', height: '2px', borderRadius: '1px', background: 'var(--cyan)' }}/>
               <div style={{ width: '16px', height: '2px', borderRadius: '1px', background: 'var(--cyan)' }}/>
             </>
           )}

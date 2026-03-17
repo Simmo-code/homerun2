@@ -286,7 +286,7 @@ export default function App() {
       <ToastStack toasts={toasts}/>
 
       <style>{`
-        .leaflet-control-zoom { margin-bottom: calc(var(--panel-h) + 10px) !important; margin-right: 12px !important; }
+        .leaflet-control-zoom { margin-bottom: 100px !important; margin-right: 16px !important; } .leaflet-right { right: 0 !important; }
         .leaflet-control-attribution { margin-bottom: var(--panel-h) !important; }
       `}</style>
     </div>
