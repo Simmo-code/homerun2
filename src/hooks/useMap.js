@@ -250,6 +250,10 @@ export function useMap(containerRef) {
     L.tileLayer(url, { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map)
   }, [])
 
+  const setLongPressCallback = useCallback((fn) => {
+    if (mapRef.current) mapRef.current._longPressCallback = fn
+  }, [])
+
   const flyTo = useCallback((lat, lon, zoom = 15) => {
     mapRef.current?.flyTo([lat, lon], zoom, { duration: 1 })
   }, [])
@@ -265,5 +269,5 @@ export function useMap(containerRef) {
     mapRef.current.flyToBounds(bounds, { padding: [60, 60], duration: 1.2, maxZoom: 15 })
   }, [])
 
-  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer }
+  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer, setLongPressCallback }
 }

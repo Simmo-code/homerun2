@@ -39,7 +39,7 @@ export async function reverseGeocode(lat, lon) {
 }
 
 export async function geocodeSearch(query) {
-  const r = await fetch(`${NOMINATIM}/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1`, { headers: UA })
+  const r = await fetch(`${NOMINATIM}/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1&countrycodes=gb`, { headers: UA })
   return r.json()
 }
 

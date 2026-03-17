@@ -42,9 +42,19 @@ export default function App() {
     setFromMarker, setToMarker,
     drawScanRings, drawTransportMarkers, drawWalkLines,
     drawRoutes, flyTo, flyToBounds, fitItems,
-    switchTileLayer } = useMap(mapRef)
+    switchTileLayer, setLongPressCallback } = useMap(mapRef)
 
   const { buses, count: busCount, lastUpdate, status: busStatus } = useLiveBuses(leafletMapRef, from, scanResults)
+
+  // ── Long press to set landing location
+  useEffect(() => {
+    setLongPressCallback((lat, lon) => {
+      handleSetFrom({ lat, lon, name: `${lat.toFixed(5)}, ${lon.toFixed(5)}` })
+      reverseGeocode(lat, lon).then(name => {
+        if (name) handleSetFrom({ lat, lon, name })
+      })
+    })
+  }, [setLongPressCallback, handleSetFrom])
 
   // ── Parse URL on load ─────────────────────────
   useEffect(() => {
