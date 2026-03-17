@@ -5,7 +5,29 @@
 
 const NOMINATIM  = 'https://nominatim.openstreetmap.org'
 const OSRM       = 'https://router.project-osrm.org'
-const OVERPASS   = 'https://overpass-api.de/api/interpreter'
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+]
+
+async function overpassQuery(query) {
+  for (const mirror of OVERPASS_MIRRORS) {
+    try {
+      const res = await fetch(mirror, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query),
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      return await res.json()
+    } catch (err) {
+      console.warn('Overpass mirror failed:', mirror, err.message)
+    }
+  }
+  throw new Error('All Overpass mirrors failed')
+}
 const TRANSITOUS = 'https://api.transitous.org/api/v1'
 const UA         = { 'User-Agent': 'HOMERUN-v2/1.0 (transit-navigator)' }
 
@@ -106,19 +128,28 @@ export async function deepScan(lat, lon) {
 out body;
 `
 
-  try {
-    const r = await fetch(OVERPASS, {
-      method: 'POST',
-      body: `data=${encodeURIComponent(query)}`,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    })
-    if (!r.ok) throw new Error('Overpass failed')
-    const data = await r.json()
-    return classifyResults(data.elements || [], lat, lon)
-  } catch (e) {
-    console.warn('Overpass scan failed:', e)
-    return emptyResults()
+  const mirrors = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  ]
+  for (const mirror of mirrors) {
+    try {
+      const r = await fetch(mirror, {
+        method: 'POST',
+        body: `data=${encodeURIComponent(query)}`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      const data = await r.json()
+      return classifyResults(data.elements || [], lat, lon)
+    } catch (e) {
+      console.warn('Overpass mirror failed:', mirror, e.message)
+    }
   }
+  console.warn('All Overpass mirrors failed')
+  return emptyResults()
 }
 
 // Also scan for local taxi companies by name/phone
@@ -133,14 +164,22 @@ export async function scanLocalTaxis(lat, lon) {
 );
 out body center;
 `
-  try {
-    const r = await fetch(OVERPASS, {
-      method: 'POST',
-      body: `data=${encodeURIComponent(query)}`,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    })
-    const data = await r.json()
-    return (data.elements || [])
+  const mirrors = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  ]
+  for (const mirror of mirrors) {
+    try {
+      const r = await fetch(mirror, {
+        method: 'POST',
+        body: `data=${encodeURIComponent(query)}`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!r.ok) continue
+      const data = await r.json()
+      return (data.elements || [])
       .filter(el => el.tags)
       .map(el => {
         const clat = el.lat || el.center?.lat
@@ -157,7 +196,9 @@ out body center;
       .filter(t => t.lat && t.phone)
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 6)
-  } catch { return [] }
+    } catch { continue }
+  }
+  return []
 }
 
 function classifyResults(elements, lat, lon) {
