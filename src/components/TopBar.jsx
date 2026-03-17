@@ -16,7 +16,7 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
   const isScanning = scanState === 'scanning'
 
   const switchLayer = (key) => {
-    console.log("switchLayer:", key, mapRef?.current)
+    console.log("switchLayer:", key, "ref:", mapRef, "current:", mapRef?.current, "window.L:", !!window.L)
     const map = mapRef?.current
     if (!map) return
     map.eachLayer(l => { if (l._url) map.removeLayer(l) })
@@ -107,7 +107,7 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
       {/* Dropdown menu */}
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 895 }}/>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 895, pointerEvents: 'none' }}/>
 
           <div style={{
             position: 'fixed', top: '58px', left: '10px', zIndex: 896,

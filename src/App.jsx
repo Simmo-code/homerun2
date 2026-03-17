@@ -239,7 +239,7 @@ export default function App() {
         scanState={scanState}
         onShare={() => setShowShare(true)}
         onReset={handleReset}
-        onLayerChange={switchTileLayer}
+        mapRef={leafletMapRef}
       />
 
       {/* Land button */}
