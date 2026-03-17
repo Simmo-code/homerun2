@@ -18,7 +18,7 @@ async function overpassQuery(query) {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'data=' + encodeURIComponent(query),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(12000),
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
       return await res.json()
@@ -131,6 +131,8 @@ out body;
   const mirrors = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass.osm.ch/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   ]
   for (const mirror of mirrors) {
@@ -139,7 +141,7 @@ out body;
         method: 'POST',
         body: `data=${encodeURIComponent(query)}`,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(12000),
       })
       if (!r.ok) throw new Error('HTTP ' + r.status)
       const data = await r.json()
@@ -167,6 +169,8 @@ out body center;
   const mirrors = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass.osm.ch/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   ]
   for (const mirror of mirrors) {
@@ -175,7 +179,7 @@ out body center;
         method: 'POST',
         body: `data=${encodeURIComponent(query)}`,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(12000),
       })
       if (!r.ok) continue
       const data = await r.json()
