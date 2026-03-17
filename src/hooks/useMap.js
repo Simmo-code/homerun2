@@ -127,6 +127,40 @@ export function useMap(containerRef) {
 
     map.on('mouseup mousemove', () => clearTimeout(pressTimer))
 
+    // Tap map to show drop pin option (works on mobile)
+    map.on('click', (e) => {
+      if (map._longPressCallback) {
+        const { lat, lng } = e.latlng
+        // Show a small popup with drop pin button
+        const popup = L.popup({ closeButton: true, className: 'drop-pin-popup' })
+          .setLatLng([lat, lng])
+          .setContent(`
+            <div style="text-align:center;padding:4px 0">
+              <div style="font-size:11px;color:#647d99;margin-bottom:8px;font-family:monospace">
+                ${lat.toFixed(5)}, ${lng.toFixed(5)}
+              </div>
+              <button id="drop-pin-btn" style="
+                background:#00e5ff;color:#000;border:none;border-radius:8px;
+                padding:8px 16px;font-weight:800;font-size:14px;cursor:pointer;
+                font-family:sans-serif;width:100%
+              ">📍 Land Here</button>
+            </div>
+          `)
+          .openOn(map)
+        
+        // Wait for popup to render then attach click
+        setTimeout(() => {
+          const btn = document.getElementById('drop-pin-btn')
+          if (btn) {
+            btn.addEventListener('click', () => {
+              map.closePopup()
+              map._longPressCallback(lat, lng)
+            })
+          }
+        }, 100)
+      }
+    })
+
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
   }, [])
