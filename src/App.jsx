@@ -42,7 +42,7 @@ export default function App() {
     setFromMarker, setToMarker,
     drawScanRings, drawTransportMarkers, drawWalkLines,
     drawRoutes, flyTo, flyToBounds, fitItems,
-  } = useMap(mapRef)
+    switchTileLayer } = useMap(mapRef)
 
   const { buses, count: busCount, lastUpdate, status: busStatus } = useLiveBuses(leafletMapRef, from, scanResults)
 
@@ -238,8 +238,8 @@ export default function App() {
         from={from}
         scanState={scanState}
         onShare={() => setShowShare(true)}
-        onSidebarToggle={() => {}}
         onReset={handleReset}
+        onLayerChange={switchTileLayer}
       />
 
       {/* Land button */}
