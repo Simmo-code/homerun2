@@ -16,6 +16,7 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
   const isScanning = scanState === 'scanning'
 
   const switchLayer = (key) => {
+    console.log("switchLayer:", key, mapRef?.current)
     const map = mapRef?.current
     if (!map) return
     map.eachLayer(l => { if (l._url) map.removeLayer(l) })
