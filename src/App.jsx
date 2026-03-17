@@ -5,7 +5,6 @@ import LandButton    from './components/LandButton'
 import BottomPanel   from './components/BottomPanel'
 import DepartureBoard from './components/DepartureBoard'
 import GetMeHome from './components/GetMeHome'
-import BottomToolbar from './components/BottomToolbar'
 import { ToastStack, SharePanel } from './components/Overlays'
 import { useMap }    from './hooks/useMap'
 import { useLiveBuses } from './hooks/useLiveBuses'
@@ -274,8 +273,6 @@ export default function App() {
           }}
         />
       )}
-
-      <BottomToolbar mapRef={leafletMapRef} scanResults={scanResults} from={from} onSearch={() => document.querySelector('.search-input')?.focus()}/>
 
       {showGetHome && from && to && (
         <GetMeHome from={from} to={to} onClose={() => setShowGetHome(false)}/>

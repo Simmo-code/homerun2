@@ -1,11 +1,32 @@
-// TopBar v3 — collapsible top-left corner menu
+// TopBar v4 — collapsible top-left corner menu with map layers
 import { useState } from 'react'
 
-export default function TopBar({ from, scanState, onShare, onReset }) {
-  const [open, setOpen] = useState(false)
+const TILE_LAYERS = {
+  street:    { name: 'Street',    emoji: '🗺️', url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png' },
+  satellite: { name: 'Satellite', emoji: '🛰️', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
+  dark:      { name: 'Dark',      emoji: '🌑', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' },
+  topo:      { name: 'Topo',      emoji: '⛰️', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png' },
+}
+
+export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
+  const [open,        setOpen]        = useState(false)
+  const [activeLayer, setActiveLayer] = useState('street')
 
   const isLive     = scanState === 'done' && from
   const isScanning = scanState === 'scanning'
+
+  const switchLayer = (key) => {
+    const map = mapRef?.current
+    if (!map) return
+    map.eachLayer(l => { if (l._url) map.removeLayer(l) })
+    const L = window.L
+    if (!L) return
+    L.tileLayer(TILE_LAYERS[key].url, {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map)
+    setActiveLayer(key)
+  }
 
   return (
     <>
@@ -20,11 +41,12 @@ export default function TopBar({ from, scanState, onShare, onReset }) {
           style={{
             width: '38px', height: '38px', borderRadius: '10px',
             background: 'rgba(13,20,32,0.95)', backdropFilter: 'blur(14px)',
-            border: '1px solid var(--border-default)',
+            border: `1px solid ${open ? 'var(--cyan)' : 'var(--border-default)'}`,
             color: 'var(--cyan)', cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', gap: '4px', flexShrink: 0,
             boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+            transition: 'border-color 0.15s',
           }}
         >
           {open ? (
@@ -32,7 +54,7 @@ export default function TopBar({ from, scanState, onShare, onReset }) {
           ) : (
             <>
               <div style={{ width: '16px', height: '2px', borderRadius: '1px', background: 'var(--cyan)' }}/>
-              <div style={{ width: '16px', height: '2px', borderRadius: '1px', background: 'var(--cyan)' }}/>
+              <div style={{ width: '12px', height: '2px', borderRadius: '1px', background: 'var(--cyan)', alignSelf: 'flex-start', marginLeft: '2px' }}/>
               <div style={{ width: '16px', height: '2px', borderRadius: '1px', background: 'var(--cyan)' }}/>
             </>
           )}
@@ -47,14 +69,13 @@ export default function TopBar({ from, scanState, onShare, onReset }) {
           boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
         }}>
           <span style={{
-            fontFamily: 'var(--font-ui)', fontWeight: 900, fontSize: '15px',
-            letterSpacing: '3px', color: 'var(--cyan)', textTransform: 'uppercase',
+            fontFamily: 'var(--font-ui)', fontWeight: 900, fontSize: '14px',
+            letterSpacing: '1px', color: 'var(--cyan)', textTransform: 'uppercase',
             userSelect: 'none',
           }}>
-            HOM<span style={{ color: 'var(--amber)' }}>E</span>RUN
+            GET ME <span style={{ color: 'var(--amber)' }}>HOME</span>
           </span>
 
-          {/* Status indicator */}
           {isScanning && (
             <>
               <div style={{ width: '1px', height: '14px', background: 'var(--border-default)' }}/>
@@ -85,20 +106,15 @@ export default function TopBar({ from, scanState, onShare, onReset }) {
       {/* Dropdown menu */}
       {open && (
         <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 895 }}
-          />
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 895 }}/>
 
-          {/* Menu panel */}
           <div style={{
             position: 'fixed', top: '58px', left: '10px', zIndex: 896,
             background: 'rgba(13,20,32,0.98)', backdropFilter: 'blur(20px)',
             border: '1px solid var(--border-default)',
             borderRadius: '12px', overflow: 'hidden',
             boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
-            minWidth: '200px',
+            minWidth: '220px',
             animation: 'fadeUp 0.15s ease',
           }}>
 
@@ -119,11 +135,42 @@ export default function TopBar({ from, scanState, onShare, onReset }) {
               </div>
             )}
 
+            {/* Map layers section */}
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)' }}>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: '9px',
+                color: 'var(--text-muted)', letterSpacing: '2px', marginBottom: '8px',
+              }}>MAP STYLE</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                {Object.entries(TILE_LAYERS).map(([key, layer]) => (
+                  <button
+                    key={key}
+                    onClick={() => switchLayer(key)}
+                    style={{
+                      padding: '8px 10px', borderRadius: '8px', cursor: 'pointer',
+                      border: activeLayer === key
+                        ? '1px solid var(--cyan)'
+                        : '1px solid var(--border-subtle)',
+                      background: activeLayer === key
+                        ? 'rgba(0,229,255,0.1)'
+                        : 'var(--surface-2)',
+                      color: activeLayer === key ? 'var(--cyan)' : 'var(--text-secondary)',
+                      fontFamily: 'var(--font-ui)', fontSize: '12px', fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      transition: 'all 0.1s',
+                    }}
+                  >
+                    <span>{layer.emoji}</span>
+                    {layer.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Menu items */}
             {[
               from && { icon: '🔄', label: 'Reset & Start Over', action: () => { onReset?.(); setOpen(false) }, color: '#ef4444' },
               { icon: '📤', label: 'Share Location', action: () => { onShare?.(); setOpen(false) } },
-              { icon: '🏠', label: 'About HOMERUN', action: () => setOpen(false) },
             ].filter(Boolean).map((item, i) => (
               <button
                 key={i}
@@ -146,13 +193,12 @@ export default function TopBar({ from, scanState, onShare, onReset }) {
               </button>
             ))}
 
-            {/* Version */}
             <div style={{
               padding: '8px 14px',
               fontFamily: 'var(--font-mono)', fontSize: '9px',
               color: 'var(--text-muted)', letterSpacing: '1px',
             }}>
-              HOMERUN v2.0 · Free &amp; Open
+              GET ME HOME v2.0 · Free &amp; Open
             </div>
           </div>
         </>
