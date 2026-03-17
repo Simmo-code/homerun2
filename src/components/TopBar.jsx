@@ -107,10 +107,10 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
       {/* Dropdown menu */}
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 895, pointerEvents: 'none' }}/>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 894 }}/>
 
           <div style={{
-            position: 'fixed', top: '58px', left: '10px', zIndex: 896,
+            position: 'fixed', top: '58px', left: '10px', zIndex: 895,
             background: 'rgba(13,20,32,0.98)', backdropFilter: 'blur(20px)',
             border: '1px solid var(--border-default)',
             borderRadius: '12px', overflow: 'hidden',
