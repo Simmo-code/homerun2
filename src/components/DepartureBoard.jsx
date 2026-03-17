@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { fmtDist, fmtWalk, fetchLiveDepartures } from '../utils/api'
 import { fetchTrainDepartures, getCRS } from '../hooks/useTrainDepartures'
+import { fetchTransitousDepartures } from '../utils/transitousDepartures'
  
 function MinuteBadge({ mins, cancelled, delayed }) {
   if (cancelled) return (
@@ -200,11 +201,11 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
         }
       }
  
-      // Fall back to Transitous for buses/trams or if NR failed
+      // Try Transitous for buses/trams or if NR failed
       try {
-        const data = await fetchLiveDepartures(item.lat, item.lon)
-        if (data?.departures?.length > 0) {
-          setDepartures(data.departures)
+        const deps = await fetchTransitousDepartures(item.label, item.lat, item.lon)
+        if (deps?.length > 0) {
+          setDepartures(deps)
           setSource('transitous')
           setLoading(false)
           return
