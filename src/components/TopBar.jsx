@@ -146,7 +146,7 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
                 {Object.entries(TILE_LAYERS).map(([key, layer]) => (
                   <button
                     key={key}
-                    onClick={() => switchLayer(key)}
+                    onClick={(e) => { e.stopPropagation(); console.log("BTN CLICK", key); switchLayer(key) }}
                     style={{
                       padding: '8px 10px', borderRadius: '8px', cursor: 'pointer',
                       border: activeLayer === key
