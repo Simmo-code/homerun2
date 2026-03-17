@@ -1,6 +1,6 @@
 // BottomPanel — the main split-view bottom panel
 // Shows: scan results (what's around you) + Get Me Home routes
-import { useState } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { fmtDist, fmtWalk, fmtDuration, taxiCost, haversine } from '../utils/api'
 
 // ── Transport Mode Row ─────────────────────────
