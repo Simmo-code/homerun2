@@ -6,20 +6,7 @@ import { fmtDist, fmtWalk, fmtDuration, taxiCost, haversine } from '../utils/api
 // ── Transport Mode Row ─────────────────────────
 
 function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
-  if (!items || items.length === 0) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '8px 0', borderBottom: '1px solid var(--border-faint)',
-        opacity: 0.35,
-      }}>
-        <span style={{ fontSize: '16px', width: '22px', textAlign: 'center' }}>{icon}</span>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          No {label.toLowerCase()} found nearby
-        </span>
-      </div>
-    )
-  }
+  if (!items || items.length === 0) return null
 
   const best = items[0]
   const walkMins = walkFrom && best.lat ? Math.round(haversine(walkFrom.lat, walkFrom.lon, best.lat, best.lon) / 80) : null
@@ -40,7 +27,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '2px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+          <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
             {best.label}
           </span>
           {items.length > 1 && (
@@ -56,7 +43,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
             </span>
           )}
           {best.operator && !best.routes && (
-            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{best.operator}</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-primary)' }}>{best.operator}</span>
           )}
         </div>
       </div>
@@ -87,7 +74,7 @@ function LocalTaxiRow({ company, onCall }) {
       display: 'flex', alignItems: 'center', gap: '10px',
       padding: '9px 0', borderBottom: '1px solid var(--border-faint)',
     }}>
-      <span style={{ fontSize: '16px', width: '22px', textAlign: 'center' }}>📞</span>
+      <span style={{ fontSize: '22px', width: '28px', textAlign: 'center' }}>📞</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '13px', fontWeight: 700 }}>{company.name}</div>
         <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '1px' }}>
@@ -148,12 +135,12 @@ function RouteCard({ route, active, onClick }) {
               {route.costEstimate && !route.unavailable && (
                 <span style={{
                   padding: '2px 7px', borderRadius: '4px', fontSize: '9px', fontWeight: 600,
-                  background: 'var(--surface-3)', color: 'var(--text-secondary)',
+                  background: 'var(--surface-3)', color: 'var(--text-primary)',
                 }}>{route.costEstimate}</span>
               )}
             </div>
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4,
+          <div style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.4,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {route.summary}
           </div>
@@ -221,7 +208,7 @@ function DestSearch({ value, onChange, onClear, geocodeSearch }) {
               onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div style={{ fontWeight: 600 }}>{r.display_name.split(',').slice(0,2).join(', ')}</div>
-              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
                 {r.display_name.split(',').slice(2,4).join(',')}
               </div>
             </div>

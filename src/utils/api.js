@@ -354,7 +354,7 @@ function classifyResults(elements, lat, lon) {
   })
 
   // Dedup bus stops by proximity (within 30m = same stop)
-  results.bus = dedupByProximity(results.bus, 30)
+  results.bus = dedupByProximity(results.bus, 30).slice(0, 10)
 
   return results
 }
