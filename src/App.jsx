@@ -222,7 +222,7 @@ export default function App() {
 
       {/* Map */}
       <div ref={mapRef} style={{
-        position: 'fixed', top: '44px', left: 0, right: 0,
+        position: 'fixed', top: 0, left: 0, right: 0,
         bottom: '60px', zIndex: 1,
       }}/>
 
