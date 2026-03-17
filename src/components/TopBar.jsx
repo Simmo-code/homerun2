@@ -16,7 +16,6 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
   const isScanning = scanState === 'scanning'
 
   const switchLayer = (key) => {
-    console.log("switchLayer:", key, "ref:", mapRef, "current:", mapRef?.current, "window.L:", !!window.L)
     const map = mapRef?.current
     if (!map) return
     map.eachLayer(l => { if (l._url) map.removeLayer(l) })
@@ -146,7 +145,7 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
                 {Object.entries(TILE_LAYERS).map(([key, layer]) => (
                   <button
                     key={key}
-                    onClick={(e) => { e.stopPropagation(); console.log("BTN CLICK", key); switchLayer(key) }}
+                    onClick={() => switchLayer(key)}
                     style={{
                       padding: '8px 10px', borderRadius: '8px', cursor: 'pointer',
                       border: activeLayer === key
