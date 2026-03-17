@@ -126,14 +126,20 @@ export default function App() {
     )
   }, [handleSetFrom, showToast])
 
-  // ── Long press to set landing location
+  // ── Long press to set landing location - retry until map ready
   useEffect(() => {
-    setLongPressCallback((lat, lon) => {
-      handleSetFrom({ lat, lon, name: lat.toFixed(5) + ', ' + lon.toFixed(5) })
-      reverseGeocode(lat, lon).then(name => {
-        if (name) handleSetFrom({ lat, lon, name })
+    const apply = () => {
+      setLongPressCallback((lat, lon) => {
+        handleSetFrom({ lat, lon, name: lat.toFixed(5) + ", " + lon.toFixed(5) })
+        reverseGeocode(lat, lon).then(name => {
+          if (name) handleSetFrom({ lat, lon, name })
+        })
       })
-    })
+    }
+    apply()
+    // Also retry after 2s in case map wasn't ready
+    const t = setTimeout(apply, 2000)
+    return () => clearTimeout(t)
   }, [setLongPressCallback, handleSetFrom])
 
   // ── Long press on map to set location ────────

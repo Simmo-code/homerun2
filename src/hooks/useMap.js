@@ -107,13 +107,14 @@ export function useMap(containerRef) {
         L.point(touch.clientX - rect.left, touch.clientY - rect.top)
       )
       pressTimer = setTimeout(() => {
-        if (pressLatLng && !touchMoved && map._longPressCallback) {
-          // Vibrate to confirm long press
+        if (!touchMoved && pressLatLng) {
           if (navigator.vibrate) navigator.vibrate(50)
-          map._longPressCallback(pressLatLng.lat, pressLatLng.lng)
+          if (map._longPressCallback) {
+            map._longPressCallback(pressLatLng.lat, pressLatLng.lng)
+          }
         }
-      }, 600)
-    }, { passive: true })
+      }, 800)
+    }, { passive: false })
 
     map.getContainer().addEventListener('touchmove', (e) => {
       touchMoved = true
