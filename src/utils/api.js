@@ -240,6 +240,12 @@ function classifyResults(elements, lat, lon) {
     }
     // Train
     else if (tags.railway === 'station' || tags.railway === 'halt') {
+      // Check if it looks like a real mainline station
+      const networkTags = (tags.network || tags.operator || tags.usage || tags.service || '').toLowerCase()
+      const isMainline = !networkTags || 
+        /national rail|network rail|south western|southern|thameslink|great western|avanti|crosscountry|chiltern|c2c|gatwick|stansted|transpennine|northern|east midlands|greater anglia|southeastern|transport for wales|scotrail|caledonian/i.test(networkTags) ||
+        tags.usage === 'main' || tags.usage === 'branch' ||
+        tags['railway:ref'] // Has a CRS-like reference
       results.train.push({
         ...base,
         type: 'train',

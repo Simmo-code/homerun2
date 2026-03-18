@@ -191,6 +191,10 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome, o
       // Try National Rail first for train stations
       if (item.type === 'train') {
         const crs = await getCRS(item.label) || await getCRS(item.name)
+        if (!crs) {
+          // Not a real National Rail station - treat as bus/transit stop
+          console.info(item.label, 'not found in NR database - treating as transit stop')
+        }
         if (crs) {
           const data = await fetchTrainDepartures(crs)
           if (data?.departures?.length > 0) {
