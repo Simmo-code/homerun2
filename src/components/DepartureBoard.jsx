@@ -377,17 +377,19 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
                   fontFamily: 'var(--font-mono)', fontSize: '11px', lineHeight: 2,
                 }}>
                   <div style={{ fontSize: '28px', marginBottom: '8px' }}>🚂</div>
-                  <div style={{ color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px', letterSpacing: '1px' }}>
-                    NO TIMETABLE DATA
+                  <div style={{ color: 'var(--amber)', fontWeight: 700, marginBottom: '8px', letterSpacing: '1px' }}>
+                    ⚠️ NO LIVE DATA
                   </div>
-                  <div style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>
-                    No departure data found for this stop.<br/>
-                    This route may no longer be in service,<br/>
-                    or data is not yet available.
+                  <div style={{ color: 'var(--text-secondary)', lineHeight: 1.9, fontSize: '12px' }}>
+                    We couldn't find timetable data for this stop.<br/>
+                    Some bus routes are seasonal, infrequent,<br/>
+                    or not yet registered in open data feeds.<br/><br/>
+                    <strong style={{ color: 'var(--text-primary)' }}>Please double-check with your local bus company before waiting.</strong>
                   </div>
                   {item.routes && (
-                    <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      Listed routes: <strong>{item.routes}</strong>
+                    <div style={{ marginTop: '10px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--amber)', fontFamily: 'var(--font-mono)', marginBottom: '3px', letterSpacing: '1px' }}>LISTED ROUTES</div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{item.routes.split(';').filter(Boolean).join(' · ')}</div>
                     </div>
                   )}
                   {item.operator && (
