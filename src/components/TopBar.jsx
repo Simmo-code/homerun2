@@ -170,6 +170,7 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
             {/* Menu items */}
             {[
               from && { icon: '🔄', label: 'Reset & Start Over', action: () => { onReset?.(); setOpen(false) }, color: '#ef4444' },
+              from && scanState === 'done' && { icon: '📡', label: 'Rescan Transport', action: () => { onRetry?.(); setOpen(false) } },
               { icon: '📤', label: 'Share Location', action: () => { onShare?.(); setOpen(false) } },
             ].filter(Boolean).map((item, i) => (
               <button
@@ -205,4 +206,4 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
       )}
     </>
   )
-}
+}// retry export handled via onRetry prop already in menu items

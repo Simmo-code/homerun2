@@ -213,6 +213,24 @@ export default function App() {
     L.tileLayer(url, { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map)
   }
 
+  const handleRetryScan = useCallback(async () => {
+    if (!from) return
+    setScanState('scanning')
+    setScanResults(EMPTY_SCAN)
+    setLocalTaxis([])
+    try {
+      const [scan, taxis] = await Promise.all([
+        scanNearby(from.lat, from.lon),
+        scanLocalTaxis(from.lat, from.lon),
+      ])
+      setScanResults(scan)
+      setLocalTaxis(taxis)
+      drawTransportMarkers(scan, from)
+      drawWalkLines(from, scan.bus[0], scan.train[0])
+    } catch {}
+    setScanState('done')
+  }, [from, drawTransportMarkers, drawWalkLines])
+
   const handleReset = useCallback(() => {
     setFrom(null)
     setTo(null)
@@ -259,6 +277,7 @@ export default function App() {
         scanState={scanState}
         onShare={() => setShowShare(true)}
         onReset={handleReset}
+        onRetry={handleRetryScan}
         mapRef={leafletMapRef}
       />
 
