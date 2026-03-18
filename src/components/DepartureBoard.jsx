@@ -357,8 +357,10 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
                   NEXT DEPARTURES
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--live)', animation: 'liveDot 1.5s infinite' }}/>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--live)' }}>LIVE</span>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: source === 'placeholder' ? 'var(--amber)' : 'var(--live)', animation: 'liveDot 1.5s infinite' }}/>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: source === 'placeholder' ? 'var(--amber)' : 'var(--live)' }}>
+                    {source === 'placeholder' ? 'TIMETABLE' : source === 'nationalrail' ? 'NATIONAL RAIL' : 'LIVE'}
+                  </span>
                 </div>
               </div>
  
@@ -396,6 +398,11 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
                 </div>
               )}
  
+              {!loading && source === 'placeholder' && (
+                <div style={{ padding: '6px 0 8px', fontSize: '11px', color: 'var(--amber)', fontFamily: 'var(--font-mono)', opacity: 0.8 }}>
+                  ⚠️ Estimated times — no live data for this stop
+                </div>
+              )}
               {!loading && departures.map((dep, i) =>
                 isTrain
                   ? <TrainRow key={i} dep={dep} idx={i}/>
