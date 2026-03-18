@@ -16,8 +16,10 @@ function MinuteBadge({ mins, cancelled, delayed }) {
     }}>CANC</div>
   )
   if (mins === null || mins === undefined) return null
+  // Dont show badge for departures more than 3 hours away
+  if (mins > 180) return null
   const color = mins <= 2 ? '#ef4444' : mins <= 5 ? '#f59e0b' : delayed ? '#f59e0b' : '#00e676'
-  const label = mins <= 0 ? 'DUE' : `${mins} min`
+  const label = mins <= 0 ? 'DUE' : mins >= 60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins} min`
   return (
     <div style={{
       minWidth: '52px', height: '26px', borderRadius: '5px',

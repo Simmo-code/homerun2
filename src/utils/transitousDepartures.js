@@ -54,9 +54,15 @@ export async function fetchTransitousDepartures(name, lat, lon, n = 6) {
       const isDelayed = actual > dep && (actual - dep) > 60000
       const cancelled = st.place.cancelled
 
+      // Get route short name and operator
+      const routeName = st.route?.shortName || st.trip?.routeShortName || null
+      const agencyName = st.route?.agency?.name || st.trip?.agencyName || null
+      const headsign = st.headsign || 'Unknown'
+
       return {
-        line:          st.route?.shortName || st.headsign?.split(' ')[0] || '—',
-        destination:   st.headsign || 'Unknown',
+        line:          routeName || headsign.split(' ')[0] || '—',
+        destination:   headsign,
+        operator:      agencyName,
         scheduledTime: dep.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         estimatedTime: actual.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         displayTime:   dep.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
