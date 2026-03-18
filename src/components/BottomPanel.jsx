@@ -9,6 +9,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
   if (!items || items.length === 0) return null
 
   const best = items[0]
+  const hasNoData = best.noData === true
   const walkMins = walkFrom && best.lat ? Math.round(haversine(walkFrom.lat, walkFrom.lon, best.lat, best.lon) / 80) : null
 
   return (
@@ -224,7 +225,7 @@ function DestSearch({ value, onChange, onClear, geocodeSearch }) {
 const TABS = ['NEARBY', 'HOME ROUTES']
 
 export default function BottomPanel({
-  from, scanResults, localTaxis, scanState,
+  from, scanResults, localTaxis, scanState, noDataStops = new Set(),
   homeRoutes, activeRouteIdx, onRouteSelect,
   to, onToChange, onToClear,
   onComputeHome, onMarkerClick, onGetMeHome,

@@ -287,6 +287,17 @@ export function useMap(containerRef) {
     })
   }, [])
 
+  const greyMarker = useCallback((itemId) => {
+    const map = mapRef.current
+    if (!map) return
+    map.eachLayer(l => {
+      if (l._icon && l.options?.itemId === itemId) {
+        l._icon.style.filter = 'grayscale(1) opacity(0.45)'
+        l._icon.title = 'No live data'
+      }
+    })
+  }, [])
+
   const switchTileLayer = useCallback((url) => {
     const map = mapRef.current
     const toRemove = []
@@ -314,5 +325,5 @@ export function useMap(containerRef) {
     mapRef.current.flyToBounds(bounds, { padding: [60, 60], duration: 1.2, maxZoom: 15 })
   }, [])
 
-  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer, setLongPressCallback }
+  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer, setLongPressCallback, greyMarker }
 }

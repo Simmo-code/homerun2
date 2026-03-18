@@ -23,6 +23,7 @@ export default function App() {
   const [from,              setFrom]             = useState(null)
   const [to,                setTo]               = useState(null)
   const [scanState,         setScanState]        = useState('idle')
+  const [noDataStops,       setNoDataStops]      = useState(new Set())
   const scanningRef = useRef(false)
   const [scanResults,       setScanResults]      = useState(EMPTY_SCAN)
   const [localTaxis,        setLocalTaxis]       = useState([])
@@ -43,7 +44,7 @@ export default function App() {
     setFromMarker, setToMarker,
     drawScanRings, drawTransportMarkers, drawWalkLines,
     drawRoutes, flyTo, flyToBounds, fitItems,
-    switchTileLayer, setLongPressCallback } = useMap(mapRef)
+    switchTileLayer, setLongPressCallback, greyMarker } = useMap(mapRef)
 
   const { buses, count: busCount, lastUpdate, status: busStatus } = useLiveBuses(leafletMapRef, from, scanResults)
 
@@ -271,6 +272,7 @@ export default function App() {
 
       {/* Bottom panel */}
       <BottomPanel
+        noDataStops={noDataStops}
         from={from}
         scanResults={scanResults}
         localTaxis={localTaxis}

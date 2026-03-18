@@ -171,7 +171,7 @@ function TaxiPanel({ item }) {
   )
 }
  
-export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome }) {
+export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome, onNoData }) {
   const [departures, setDepartures] = useState([])
   const [stationName, setStationName] = useState('')
   const [loading, setLoading]       = useState(false)
@@ -212,10 +212,12 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
         }
       } catch {}
  
-      // No real data available - don't show fake times
+      // No real data available
       setDepartures([])
       setSource('no-data')
       setLoading(false)
+      // Tell parent to grey out this marker
+      onNoData?.(item)
     }
  
     load()
