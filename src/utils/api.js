@@ -39,8 +39,47 @@ export async function reverseGeocode(lat, lon) {
 }
 
 export async function geocodeSearch(query) {
-  const r = await fetch(`${NOMINATIM}/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1&countrycodes=gb`, { headers: UA })
-  return r.json()
+  if (!query || query.length < 2) return []
+  try {
+    // Run multiple searches in parallel for better results
+    const [general, stations, towns] = await Promise.all([
+      fetch(`${NOMINATIM}/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1&countrycodes=gb`, { headers: UA }).then(r => r.json()).catch(() => []),
+      fetch(`${NOMINATIM}/search?q=${encodeURIComponent(query + ' railway station')}&format=json&limit=3&addressdetails=1&countrycodes=gb`, { headers: UA }).then(r => r.json()).catch(() => []),
+      fetch(`${NOMINATIM}/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1&countrycodes=gb&featuretype=city,town,village`, { headers: UA }).then(r => r.json()).catch(() => []),
+    ])
+
+    // Combine and deduplicate by proximity
+    const all = [...stations, ...general, ...towns]
+    const seen = new Set()
+    const results = []
+
+    for (const d of all) {
+      const lat = parseFloat(d.lat)
+      const lon = parseFloat(d.lon)
+      const key = `${lat.toFixed(3)},${lon.toFixed(3)}`
+      if (seen.has(key)) continue
+      seen.add(key)
+
+      // Format display name nicely
+      const addr = d.address || {}
+      let name = d.display_name
+
+      // For railway stations, show station name prominently
+      if (d.type === 'station' || d.class === 'railway' || name.toLowerCase().includes('railway station')) {
+        const stationName = addr.railway || addr.amenity || name.split(',')[0]
+        const town = addr.city || addr.town || addr.village || ''
+        name = stationName + (town ? ', ' + town : '')
+      } else {
+        // Shorten display name
+        const parts = d.display_name.split(',').map(p => p.trim())
+        name = parts.slice(0, 3).join(', ')
+      }
+
+      results.push({ name, lat, lon, type: d.type, class: d.class })
+    }
+
+    return results.slice(0, 8)
+  } catch { return [] }
 }
 
 // ── Walking distance via OSRM ──────────────────
