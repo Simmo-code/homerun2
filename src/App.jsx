@@ -23,6 +23,7 @@ export default function App() {
   const [from,              setFrom]             = useState(null)
   const [to,                setTo]               = useState(null)
   const [scanState,         setScanState]        = useState('idle')
+  const scanningRef = useRef(false)
   const [scanResults,       setScanResults]      = useState(EMPTY_SCAN)
   const [localTaxis,        setLocalTaxis]       = useState([])
   const [selectedItem,      setSelectedItem]     = useState(null)
@@ -67,6 +68,8 @@ export default function App() {
 
   // ── Full scan sequence ────────────────────────
   const handleSetFrom = useCallback(async (loc) => {
+    if (scanningRef.current) return
+    scanningRef.current = true
     setFrom(loc)
     setFromMarker(loc)
     flyTo(loc.lat, loc.lon, 14)
