@@ -212,14 +212,9 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
         }
       } catch {}
  
-      // Only show placeholder for bus stops, not train stations
-      if (item.type !== 'train') {
-        setDepartures(generatePlaceholder(item))
-        setSource('placeholder')
-      } else {
-        setDepartures([])
-        setSource('heritage')
-      }
+      // No real data available - don't show fake times
+      setDepartures([])
+      setSource('no-data')
       setLoading(false)
     }
  
@@ -383,13 +378,18 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome })
                 }}>
                   <div style={{ fontSize: '28px', marginBottom: '8px' }}>🚂</div>
                   <div style={{ color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px', letterSpacing: '1px' }}>
-                    NO LIVE DATA
+                    NO TIMETABLE DATA
                   </div>
-                  <div style={{ color: 'var(--text-muted)' }}>
-                    Live departures unavailable for this station.<br/>
-                    May be operated by a regional network<br/>
-                    not covered by National Rail OpenData.
+                  <div style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>
+                    No departure data found for this stop.<br/>
+                    This route may no longer be in service,<br/>
+                    or data is not yet available.
                   </div>
+                  {item.routes && (
+                    <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Listed routes: <strong>{item.routes}</strong>
+                    </div>
+                  )}
                   {item.operator && (
                     <div style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>
                       Operator: {item.operator}
