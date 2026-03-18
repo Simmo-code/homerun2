@@ -128,37 +128,47 @@ export function useMap(containerRef) {
     map.on('mouseup mousemove', () => clearTimeout(pressTimer))
 
     // Tap map to show drop pin option (works on mobile)
+    // Only show popup, do NOT trigger scan until user confirms
     map.on('click', (e) => {
-      if (map._longPressCallback) {
-        const { lat, lng } = e.latlng
-        // Show a small popup with drop pin button
-        const popup = L.popup({ closeButton: true, className: 'drop-pin-popup' })
-          .setLatLng([lat, lng])
-          .setContent(`
-            <div style="text-align:center;padding:4px 0">
-              <div style="font-size:11px;color:#647d99;margin-bottom:8px;font-family:monospace">
-                ${lat.toFixed(5)}, ${lng.toFixed(5)}
-              </div>
-              <button id="drop-pin-btn" style="
-                background:#00e5ff;color:#000;border:none;border-radius:8px;
-                padding:8px 16px;font-weight:800;font-size:14px;cursor:pointer;
-                font-family:sans-serif;width:100%
-              ">📍 Land Here</button>
+      if (!map._longPressCallback) return
+      // Dont fire if click came from a marker or popup
+      if (e.originalEvent._fromMarker) return
+      const { lat, lng } = e.latlng
+      // Close any existing popup first
+      map.closePopup()
+      const popupId = 'drop-pin-' + Date.now()
+      const popup = L.popup({ closeButton: true, className: 'drop-pin-popup', autoClose: true })
+        .setLatLng([lat, lng])
+        .setContent(`
+          <div style="text-align:center;padding:4px 0;min-width:160px">
+            <div style="font-size:11px;color:#647d99;margin-bottom:8px;font-family:monospace">
+              ${lat.toFixed(4)}, ${lng.toFixed(4)}
             </div>
-          `)
-          .openOn(map)
-        
-        // Wait for popup to render then attach click
-        setTimeout(() => {
-          const btn = document.getElementById('drop-pin-btn')
-          if (btn) {
-            btn.addEventListener('click', () => {
-              map.closePopup()
-              map._longPressCallback(lat, lng)
-            })
-          }
-        }, 100)
-      }
+            <button id="${popupId}" style="
+              background:#00e5ff;color:#000;border:none;border-radius:8px;
+              padding:10px 20px;font-weight:800;font-size:14px;cursor:pointer;
+              font-family:sans-serif;width:100%;touch-action:manipulation
+            ">📍 I Landed Here</button>
+          </div>
+        `)
+      popup.openOn(map)
+
+      setTimeout(() => {
+        const btn = document.getElementById(popupId)
+        if (btn) {
+          btn.addEventListener('click', (ev) => {
+            ev.stopPropagation()
+            map.closePopup()
+            map._longPressCallback(lat, lng)
+          })
+          btn.addEventListener('touchend', (ev) => {
+            ev.preventDefault()
+            ev.stopPropagation()
+            map.closePopup()
+            map._longPressCallback(lat, lng)
+          })
+        }
+      }, 150)
     })
 
     mapRef.current = map
