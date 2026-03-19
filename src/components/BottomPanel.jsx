@@ -150,6 +150,39 @@ function RouteCard({ route, active, onClick }) {
               Departs {route.departTime}
             </div>
           )}
+          {/* Show leg details for transit routes */}
+          {route.legs && route.legs.length > 1 && active && (
+            <div style={{ marginTop: '10px', borderTop: '1px solid var(--border-faint)', paddingTop: '8px' }}>
+              {route.legs.map((leg, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '8px',
+                  padding: '5px 0', borderBottom: i < route.legs.length-1 ? '1px solid var(--border-faint)' : 'none',
+                }}>
+                  <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>{leg.icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: leg.color || 'var(--text-primary)', lineHeight: 1.3 }}>
+                      {leg.label}
+                    </div>
+                    {leg.from && (
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                        {leg.from}{leg.to ? ' → ' + leg.to : ''}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                    {leg.departTime && (
+                      <div style={{ fontSize: '12px', color: 'var(--amber)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                        {leg.departTime}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      {leg.duration ? fmtDuration(leg.duration / 60) : ''}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

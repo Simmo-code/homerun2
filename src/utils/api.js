@@ -469,7 +469,7 @@ export async function computeHomeRoutes(from, to, scanResults) {
   }
 
   // Transit
-  const plan = transitR.status === 'fulfilled' ? transitR.value?.plan : null
+  console.log("transitR:", transitR.status, transitR.value); const plan = transitR.status === 'fulfilled' ? transitR.value?.plan : null
   if (plan?.itineraries?.length) {
     plan.itineraries.slice(0, 2).forEach((itin, idx) => {
       const legs = (itin.legs || []).map(l => ({
