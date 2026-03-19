@@ -134,17 +134,17 @@ export default function App() {
   useEffect(() => {
     const apply = () => {
       setLongPressCallback((lat, lon) => {
-        handleSetFrom({ lat, lon, name: lat.toFixed(5) + ", " + lon.toFixed(5) })
+        handleSetFrom({ lat, lon, name: lat.toFixed(4) + ', ' + lon.toFixed(4) })
         reverseGeocode(lat, lon).then(name => {
           if (name) handleSetFrom({ lat, lon, name })
-        })
+        }).catch(() => {})
       })
     }
     apply()
-    // Also retry after 2s in case map wasn't ready
     const t = setTimeout(apply, 2000)
     return () => clearTimeout(t)
   }, [setLongPressCallback, handleSetFrom])
+
 
   // ── Long press on map to set location ────────
   useEffect(() => {
