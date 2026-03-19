@@ -174,7 +174,7 @@ function DestSearch({ value, onChange, onClear, geocodeSearch }) {
   }
 
   const handleSelect = (item) => {
-    const loc = { lat: +item.lat, lon: +item.lon, name: item.display_name.split(',').slice(0,2).join(', ') }
+    const loc = { lat: +item.lat, lon: +item.lon, name: (item.display_name || item.name || '').split(',').slice(0,2).join(', ') }
     setQuery(loc.name); setResults([]); setOpen(false); onChange(loc)
   }
 
@@ -208,9 +208,9 @@ function DestSearch({ value, onChange, onClear, geocodeSearch }) {
                 transition: 'background 0.1s', fontSize: '13px' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <div style={{ fontWeight: 600 }}>{r.display_name.split(',').slice(0,2).join(', ')}</div>
+              <div style={{ fontWeight: 600 }}>{(r.display_name || r.name || '').split(',').slice(0,2).join(', ')}</div>
               <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
-                {r.display_name.split(',').slice(2,4).join(',')}
+                {(r.display_name || r.name || '').split(',').slice(2,4).join(',')}
               </div>
             </div>
           ))}
