@@ -304,7 +304,7 @@ export default function App() {
         onToClear={() => { setTo(null); setHomeRoutes([]) }}
         onComputeHome={handleComputeHome}
         onMarkerClick={handleMarkerClick}
-        onGetMeHome={() => setShowGetHome(true)}
+        onGetMeHome={(item) => { setGetHomeFrom(item ? { lat: item.lat, lon: item.lon, name: item.label } : null); setShowGetHome(true) }}
         geocodeSearch={geocodeSearch}
         homeRoutesLoading={homeRoutesLoading}
       />
@@ -315,7 +315,8 @@ export default function App() {
           item={selectedItem}
           walkInfo={selectedWalk}
           onClose={() => { setSelectedItem(null); setSelectedWalk(null) }}
-          onGetMeHome={() => {
+          onGetMeHome={(item) => {
+          setGetHomeFrom(item ? { lat: item.lat, lon: item.lon, name: item.label } : null)
             setSelectedItem(null)
             if (!to) showToast('Enter your destination above to find routes home')
           }}
@@ -323,7 +324,7 @@ export default function App() {
       )}
 
       {showGetHome && from && to && (
-        <GetMeHome from={from} to={to} onClose={() => setShowGetHome(false)}/>
+        <GetMeHome from={getHomeFrom || from} to={to} onClose={() => { setShowGetHome(false); setGetHomeFrom(null) }}/>
       )}
 
       {/* Share panel */}
