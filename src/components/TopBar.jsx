@@ -2,7 +2,7 @@
 import { useState } from 'react'
 
 const TILE_LAYERS = {
-  street:    { name: 'Street',    emoji: '🗺️', url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png' },
+  street:    { name: 'Street',    emoji: '🗺️', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' },
   satellite: { name: 'Satellite', emoji: '🛰️', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
   dark:      { name: 'Dark',      emoji: '🌑', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' },
   topo:      { name: 'Topo',      emoji: '⛰️', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png' },
