@@ -54,8 +54,8 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
           {fmtDist(best.dist)}
         </div>
         {walkMins !== null && (
-          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>
-            🚶 {walkMins < 2 ? 'here' : `${walkMins}m`}
+          <div style={{ fontSize: '14px', color: 'var(--cyan)', fontWeight: 700, marginTop: '3px' }}>
+            🚶 {walkMins < 2 ? 'here' : walkMins >= 60 ? `${Math.floor(walkMins/60)}h ${walkMins%60}m` : `${walkMins} min`}
           </div>
         )}
       </div>
