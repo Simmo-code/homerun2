@@ -82,6 +82,13 @@ export function useMap(containerRef) {
       zoomControl: false, preferCanvas: true,
     })
     L.tileLayer(TILES, { attribution: ATTRIB, subdomains: 'abcd', maxZoom: 20 }).addTo(map)
+    // Railway overlay from OpenRailwayMap
+    L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+      attribution: '© OpenRailwayMap',
+      subdomains: 'abcd',
+      maxZoom: 20,
+      opacity: 0.7,
+    }).addTo(map)
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
     // Long press to drop pin — works on both desktop and mobile
