@@ -33,6 +33,7 @@ export default function App() {
   const [activeRouteIdx,    setActiveRouteIdx]   = useState(0)
   const [homeRoutesLoading, setHomeRoutesLoading]= useState(false)
   const [showGetHome, setShowGetHome] = useState(false)
+  const [getHomeFrom, setGetHomeFrom] = useState(null)
   const [showShare,         setShowShare]        = useState(false)
   const [home,              setHome]             = useState(() => {
     try { return JSON.parse(localStorage.getItem('homerun_home') || 'null') } catch { return null }
