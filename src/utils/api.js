@@ -110,7 +110,7 @@ export async function fetchTransitRoute(from, to) {
     const now  = new Date()
     const date = now.toISOString().split('T')[0]
     const time = now.toTimeString().slice(0, 5)
-    const r    = await fetch(`${TRANSITOUS}/plan?fromLat=${from.lat}&fromLon=${from.lon}&toLat=${to.lat}&toLon=${to.lon}&time=${time}&date=${date}&numItineraries=3`)
+    const r    = await fetch(`${TRANSITOUS}/plan?fromPlace=${from.lat},${from.lon}&toPlace=${to.lat},${to.lon}&datetime=${new Date().toISOString().slice(0,19)}&numItineraries=5`)
     if (!r.ok) return null
     return r.json()
   } catch { return null }
