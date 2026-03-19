@@ -469,9 +469,11 @@ export async function computeHomeRoutes(from, to, scanResults) {
   }
 
   // Transit
-  console.log("transitR value:", JSON.stringify(transitR.value).slice(0,300)); const plan = transitR.status === 'fulfilled' ? transitR.value?.plan : null
-  if (plan?.itineraries?.length) {
-    plan.itineraries.slice(0, 2).forEach((itin, idx) => {
+  console.log("transitR value:", JSON.stringify(transitR.value).slice(0,300)); const transitData = transitR.status === 'fulfilled' ? transitR.value : null
+  const itineraries = transitData?.itineraries || transitData?.plan?.itineraries || []
+  console.log("itineraries found:", itineraries.length)
+  if (itineraries.length) {
+    itineraries.slice(0, 3).forEach((itin, idx) => {
       const legs = (itin.legs || []).map(l => ({
         icon: modeIcon(l.mode), color: modeColor(l.mode),
         label: l.route?.shortName
@@ -494,7 +496,8 @@ export async function computeHomeRoutes(from, to, scanResults) {
         departTime: legs[0]?.departTime,
       })
     })
-  } else {
+  }
+  if (!itineraries.length) {
     routes.push({
       id: 'transit', mode: 'transit', icon: '🚌', color: 'var(--bus)',
       label: 'Public Transit', unavailable: true,
