@@ -24,7 +24,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
     >
-      <span style={{ fontSize: '17px', width: '22px', textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+      <span style={{ fontSize: '26px', width: '32px', textAlign: 'center', flexShrink: 0 }}>{icon}</span>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '2px' }}>
