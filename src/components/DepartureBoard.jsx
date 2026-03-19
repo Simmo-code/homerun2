@@ -397,7 +397,7 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome, o
                   {item.routes && (
                     <div style={{ marginTop: '10px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
                       <div style={{ fontSize: '10px', color: 'var(--amber)', fontFamily: 'var(--font-mono)', marginBottom: '3px', letterSpacing: '1px' }}>LISTED ROUTES</div>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{item.routes.split(';').filter(Boolean).join(' · ')}</div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{item.routes?.split(';').filter(Boolean).join(' · ') || '—'}</div>
                     </div>
                   )}
                   {item.operator && (
