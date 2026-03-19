@@ -40,7 +40,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {best.routes && (
             <span style={{ fontSize: '12px', color: color, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-              {best.routes.split(';').slice(0,4).join(' · ')}
+              {(best.routes || '').split(';').filter(Boolean).slice(0,4).join(' · ')}
             </span>
           )}
           {best.operator && !best.routes && (
