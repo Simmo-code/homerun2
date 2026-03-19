@@ -50,7 +50,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
       </div>
 
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontSize: '14px', fontFamily: 'var(--font-mono)', color: color, fontWeight: 700 }}>
+        <div style={{ fontSize: '17px', fontFamily: 'var(--font-mono)', color: color, fontWeight: 800 }}>
           {fmtDist(best.dist)}
         </div>
         {walkMins !== null && (
@@ -60,7 +60,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
         )}
       </div>
 
-      <svg width="10" height="16" viewBox="0 0 8 12" fill="var(--text-secondary)" style={{ flexShrink: 0 }}>
+      <svg width="12" height="20" viewBox="0 0 8 12" fill="var(--cyan)" style={{ flexShrink: 0 }}>
         <path d="M1 1l6 5-6 5"/>
       </svg>
     </div>
