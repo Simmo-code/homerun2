@@ -33,7 +33,10 @@ const UA         = { 'User-Agent': 'HOMERUN-v2/1.0 (transit-navigator)' }
 
 // ── Geocoding ──────────────────────────────────
 
+const reverseCache = {}
 export async function reverseGeocode(lat, lon) {
+  const key = lat.toFixed(3) + ',' + lon.toFixed(3)
+  if (reverseCache[key]) return reverseCache[key]
   const r = await fetch(`${NOMINATIM}/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`, { headers: UA })
   return r.json()
 }
