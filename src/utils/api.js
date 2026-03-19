@@ -409,7 +409,7 @@ export async function computeHomeRoutes(from, to, scanResults) {
   const routes = []
 
   // Walking routes to each transport node + onward journey
-  const [walkR, driveR, cycleR, transitR] = await Promise.allSettled([
+  console.log("Computing routes from", from, "to", to); const [walkR, driveR, cycleR, transitR] = await Promise.allSettled([
     fetchOSRM('walking', from, to),
     fetchOSRM('driving', from, to),
     fetchOSRM('cycling', from, to),
