@@ -1,7 +1,7 @@
 // GetMeHome.jsx — Smart journey optimiser
 // Uses Transitous with datetime parameter for real UK transit routing
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { fmtDist, fmtDuration } from '../utils/api'
 
 const TRANSITOUS = 'https://api.transitous.org/api/v1/plan'
@@ -252,9 +252,9 @@ export default function GetMeHome({ from, to, onClose }) {
   }, [from, to])
 
   // Auto-fetch on mount
-  useState(() => {
+  useEffect(() => {
     if (from && to) fetchJourneys()
-  })
+  }, [])
 
   if (!from || !to) return null
 

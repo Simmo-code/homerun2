@@ -319,6 +319,7 @@ export default function App() {
           onGetMeHome={(item) => {
           setGetHomeFrom(item ? { lat: item.lat, lon: item.lon, name: item.label } : null)
             setSelectedItem(null)
+            setShowGetHome(true)
             if (!to) showToast('Enter your destination above to find routes home')
           }}
         />
