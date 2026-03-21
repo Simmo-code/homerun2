@@ -33,7 +33,14 @@ export function SharePanel({ from, to, onClose, showToast }) {
 
   // Build a readable address string from from.name (Nominatim returns "road, suburb, city, postcode, England")
   const addressText = from?.name || ''
-  const shareMsg = `I landed at:\n${addressText}\nCoords: ${from?.lat?.toFixed(5)}, ${from?.lon?.toFixed(5)}\n${url}`
+  const shareMsg = [
+    `🪂 I've landed and need a lift home!`,
+    ``,
+    `📍 Location: ${addressText || `${from?.lat?.toFixed(5)}, ${from?.lon?.toFixed(5)}`}`,
+    `🗺️ Track me: ${url}`,
+    ``,
+    `(Tap the link to see my location on a map)`
+  ].join('\n')
   const waUrl = `https://wa.me/?text=${encodeURIComponent(shareMsg)}`
   const messengerUrl = `fb-messenger://share?link=${encodeURIComponent(url)}`
 
