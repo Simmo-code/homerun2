@@ -56,22 +56,26 @@ export function SharePanel({ from, to, onClose, showToast }) {
       }}>
         <div style={{width:'32px',height:'3px',borderRadius:'2px',background:'var(--border-default)',margin:'0 auto 16px'}}/>
         <div style={{fontFamily:'var(--font-ui)',fontSize:'17px',fontWeight:800,marginBottom:'14px'}}>📤 Share Journey</div>
-        {from?.name && (
-          <div style={{
-            background:'var(--surface-0)',border:'1px solid var(--border-default)',borderRadius:'7px',
-            padding:'10px 12px',marginBottom:'10px',fontFamily:'var(--font-ui)',fontSize:'12px',
-            color:'var(--text-secondary)',lineHeight:1.6,
-          }}>
-            <span style={{color:'var(--cyan)',fontWeight:700}}>📍 </span>
-            {from.name}
-          </div>
-        )}
-        <div onClick={copy} style={{
-          background:'var(--surface-0)',border:'1px solid var(--border-default)',borderRadius:'7px',
-          padding:'10px 12px',fontFamily:'var(--font-mono)',fontSize:'10px',color:'var(--text-secondary)',
-          wordBreak:'break-all',cursor:'pointer',marginBottom:'12px',lineHeight:1.5,
+        <div style={{
+          background:'var(--surface-0)',border:'1px solid var(--border-default)',borderRadius:'10px',
+          padding:'12px 14px',marginBottom:'12px',
         }}>
-          {url} <span style={{color:'var(--cyan)'}}>⎘ copy</span>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'10px'}}>
+            <div>
+              <div style={{fontFamily:'var(--font-ui)',fontSize:'13px',fontWeight:700,color:'var(--cyan)',marginBottom:'4px'}}>📍 Landing location</div>
+              <div style={{fontFamily:'var(--font-ui)',fontSize:'14px',color:'var(--text-primary)',lineHeight:1.5}}>
+                {from?.name && !/^-?\d+\.\d+,\s*-?\d+/.test(from.name)
+                  ? from.name
+                  : <span style={{color:'var(--text-secondary)',fontSize:'12px'}}>Waiting for address… (tap map to set location)</span>
+                }
+              </div>
+            </div>
+            <button onClick={copy} style={{
+              flexShrink:0,height:'34px',padding:'0 12px',borderRadius:'6px',
+              border:'1px solid var(--border-default)',background:'var(--surface-2)',
+              color:'var(--cyan)',cursor:'pointer',fontFamily:'var(--font-ui)',fontSize:'12px',fontWeight:700
+            }}>⎘ Copy link</button>
+          </div>
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:'7px',marginBottom:'14px'}}>
           {from && to && <>
