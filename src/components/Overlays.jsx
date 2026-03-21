@@ -84,6 +84,11 @@ export function SharePanel({ from, to, onClose, showToast }) {
               🚇 Open in Citymapper
             </a>
           </>}
+          {from && <a href={`https://www.google.com/maps?q=${from.lat},${from.lon}`} target="_blank" rel="noreferrer"
+            style={{height:'46px',borderRadius:'8px',border:'1px solid rgba(66,133,244,0.3)',background:'rgba(66,133,244,0.07)',color:'#4285f4',textDecoration:'none',display:'flex',alignItems:'center',gap:'10px',padding:'0 14px',fontFamily:'var(--font-ui)',fontSize:'14px',fontWeight:600}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#4285f4"/></svg>
+            Open in Google Maps
+          </a>}
           {from && <button onClick={() => { navigator.clipboard?.writeText(`${from.lat.toFixed(6)}, ${from.lon.toFixed(6)}`); showToast('📍 Coords copied') }}
             style={{height:'46px',borderRadius:'8px',border:'1px solid var(--border-default)',background:'var(--surface-2)',color:'var(--text-primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',padding:'0 14px',fontFamily:'var(--font-ui)',fontSize:'14px',fontWeight:600}}>
             📍 Copy coordinates

@@ -117,7 +117,10 @@ export default function App() {
         const { latitude: lat, longitude: lon } = pos.coords
         try {
           const data = await reverseGeocode(lat, lon)
-          const name = data.display_name?.split(',').slice(0,3).join(',').trim() || `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+          const parts = data.display_name?.split(',').map(s => s.trim()) || []
+          const postcode = parts.find(p => /^[A-Z]{1,2}\d/.test(p)) || ''
+          const short = parts.slice(0, 3).join(', ')
+          const name = postcode ? `${short}, ${postcode}` : short || `${lat.toFixed(5)}, ${lon.toFixed(5)}`
           await handleSetFrom({ lat, lon, name })
         } catch {
           await handleSetFrom({ lat, lon, name: `${lat.toFixed(5)}, ${lon.toFixed(5)}` })
@@ -136,8 +139,14 @@ export default function App() {
     const apply = () => {
       setLongPressCallback((lat, lon) => {
         handleSetFrom({ lat, lon, name: lat.toFixed(4) + ', ' + lon.toFixed(4) })
-        reverseGeocode(lat, lon).then(name => {
-          if (name) handleSetFrom({ lat, lon, name })
+        reverseGeocode(lat, lon).then(data => {
+          if (data?.display_name) {
+            const parts = data.display_name.split(',').map(s => s.trim())
+            const postcode = parts.find(p => /^[A-Z]{1,2}\d/.test(p)) || ''
+            const short = parts.slice(0, 3).join(', ')
+            const name = postcode ? `${short}, ${postcode}` : short
+            handleSetFrom({ lat, lon, name })
+          }
         }).catch(() => {})
       })
     }
@@ -158,7 +167,10 @@ export default function App() {
         showToast('📍 Setting landing location…')
         try {
           const data = await reverseGeocode(lat, lng)
-          const name = data.display_name?.split(',').slice(0,3).join(',').trim() || `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+          const parts = data.display_name?.split(',').map(s => s.trim()) || []
+          const postcode = parts.find(p => /^[A-Z]{1,2}\d/.test(p)) || ''
+          const short = parts.slice(0, 3).join(', ')
+          const name = postcode ? `${short}, ${postcode}` : short || `${lat.toFixed(5)}, ${lng.toFixed(5)}`
           await handleSetFrom({ lat, lon: lng, name })
         } catch {
           await handleSetFrom({ lat, lon: lng, name: `${lat.toFixed(5)}, ${lng.toFixed(5)}` })
