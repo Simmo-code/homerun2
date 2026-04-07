@@ -1,7 +1,11 @@
 // ═══════════════════════════════════════════════
 // HOMERUN v2 — Transport Scan Engine
 // Discovers every possible way home from any point
+// With live Darwin train verification + BODS live buses
 // ═══════════════════════════════════════════════
+
+import { enrichAllItineraries } from './darwinLive.js'
+import { fetchLiveBuses, matchBusesToStops } from './bodsLiveBus.js'
 
 const NOMINATIM  = 'https://nominatim.openstreetmap.org'
 const OSRM       = 'https://router.project-osrm.org'
@@ -468,10 +472,22 @@ export async function computeHomeRoutes(from, to, scanResults) {
     })
   }
 
-  // Transit
-  console.log("transitR value:", JSON.stringify(transitR.value).slice(0,300)); const transitData = transitR.status === 'fulfilled' ? transitR.value : null
-  const itineraries = transitData?.itineraries || transitData?.plan?.itineraries || []
-  console.log("itineraries found:", itineraries.length)
+  // Transit — enrich with live Darwin data for rail legs
+  const transitData = transitR.status === 'fulfilled' ? transitR.value : null
+  const rawItineraries = transitData?.itineraries || transitData?.plan?.itineraries || []
+
+  // Enrich rail legs with live National Rail Darwin data (platform, delays, cancellations)
+  let itineraries = rawItineraries
+  if (rawItineraries.length) {
+    try {
+      itineraries = await enrichAllItineraries(rawItineraries)
+      console.log('[Darwin] Enriched', itineraries.length, 'itineraries with live train data')
+    } catch (err) {
+      console.warn('[Darwin] Enrichment failed, using raw data:', err.message)
+      itineraries = rawItineraries
+    }
+  }
+
   if (itineraries.length) {
     itineraries.slice(0, 3).forEach((itin, idx) => {
       const legs = (itin.legs || []).map(l => ({
@@ -482,6 +498,8 @@ export async function computeHomeRoutes(from, to, scanResults) {
         duration: (l.endTime - l.startTime) / 1000,
         from: l.from?.name, to: l.to?.name,
         departTime: l.startTime ? new Date(l.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
+        // Live Darwin data (if enriched)
+        liveStatus: l.liveStatus || null,
       }))
       routes.push({
         id: `transit_${idx}`,
@@ -494,6 +512,9 @@ export async function computeHomeRoutes(from, to, scanResults) {
         transfers: itin.transfers || 0,
         costEstimate: 'Fare applies',
         departTime: legs[0]?.departTime,
+        // Overall live confidence for the itinerary
+        liveConfidence: itin.liveConfidence || null,
+        liveMessage: itin.liveMessage || null,
       })
     })
   }
@@ -576,4 +597,26 @@ function modeIcon(mode) {
 }
 function modeColor(mode) {
   return { WALK:'var(--walk)', BUS:'var(--bus)', RAIL:'var(--train)', SUBWAY:'var(--cyan)', TRAM:'var(--coach)', FERRY:'var(--ferry)' }[mode?.toUpperCase()] || 'var(--bus)'
+}
+
+// ── BODS Live Bus Scanning ───────────────────────
+// Enriches bus stops with live vehicle positions from BODS SIRI-VM
+
+export async function scanLiveBuses(lat, lon, busStops) {
+  try {
+    const enriched = await matchBusesToStops(busStops || [], lat, lon)
+    return enriched
+  } catch (err) {
+    console.warn('[BODS] Live bus scan failed:', err.message)
+    return busStops || []
+  }
+}
+
+export async function getLiveBusPositions(lat, lon, radiusKm = 2) {
+  try {
+    return await fetchLiveBuses(lat, lon, radiusKm)
+  } catch (err) {
+    console.warn('[BODS] Live bus positions failed:', err.message)
+    return []
+  }
 }
