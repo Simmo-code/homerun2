@@ -37,12 +37,12 @@ function createBoundingBox(lat, lon, radiusKm = 2) {
   const latOffset = radiusKm / 111;
   const lonOffset = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
 
-  return [
-    (lat - latOffset).toFixed(6),
-    (lon - lonOffset).toFixed(6),
-    (lat + latOffset).toFixed(6),
-    (lon + lonOffset).toFixed(6),
-  ].join(',');
+return [
+  (lon - lonOffset).toFixed(6),
+  (lat - latOffset).toFixed(6),
+  (lon + lonOffset).toFixed(6),
+  (lat + latOffset).toFixed(6),
+].join(',');
 }
 
 /**
