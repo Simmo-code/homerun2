@@ -1,11 +1,35 @@
 // BottomPanel — the main split-view bottom panel
 // Shows: scan results (what's around you) + Get Me Home routes
-import { useState, useRef, useCallback, useEffect } from 'react'
+// Updated: live bus indicators on bus stop rows
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { fmtDist, fmtWalk, fmtDuration, taxiCost, haversine } from '../utils/api'
+
+// ── Live Bus Badge ────────────────────────────
+
+function LiveBusBadge({ count }) {
+  if (!count || count <= 0) return null
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '3px',
+      padding: '1px 6px', borderRadius: '10px',
+      background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.25)',
+      fontSize: '9px', fontWeight: 800, fontFamily: 'var(--font-mono)',
+      color: 'var(--live)', letterSpacing: '0.5px',
+      animation: 'live-pulse 2s ease-in-out infinite',
+    }}>
+      <span style={{
+        width: '5px', height: '5px', borderRadius: '50%',
+        background: 'var(--live)',
+        animation: 'live-dot-blink 1.5s ease-in-out infinite',
+      }}/>
+      {count} LIVE
+    </span>
+  )
+}
 
 // ── Transport Mode Row ─────────────────────────
 
-function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
+function TransportRow({ icon, color, label, items, onItemClick, walkFrom, liveBusCount }) {
   if (!items || items.length === 0) return null
 
   const best = items[0]
@@ -27,7 +51,7 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
       <span style={{ fontSize: '26px', width: '32px', textAlign: 'center', flexShrink: 0 }}>{icon}</span>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '2px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
             {best.label}
           </span>
@@ -36,6 +60,8 @@ function TransportRow({ icon, color, label, items, onItemClick, walkFrom }) {
               +{items.length - 1} more
             </span>
           )}
+          {/* Live bus badge for bus-type rows */}
+          {liveBusCount > 0 && <LiveBusBadge count={liveBusCount} />}
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {best.routes && (
@@ -263,10 +289,38 @@ export default function BottomPanel({
   to, onToChange, onToClear,
   onComputeHome, onMarkerClick, onGetMeHome,
   geocodeSearch, homeRoutesLoading,
+  liveBuses = [],
 }) {
   const [tab, setTab] = useState('NEARBY')
   const hasScan = scanState === 'done'
   const totalFound = Object.values(scanResults).flat().length + localTaxis.length
+
+  // ── Compute live bus counts per bus stop ─────
+  const liveBusByStop = useMemo(() => {
+    if (!liveBuses || liveBuses.length === 0 || !scanResults.bus || scanResults.bus.length === 0) {
+      return { total: liveBuses?.length || 0, perStop: new Map() }
+    }
+
+    const perStop = new Map()
+    const MATCH_RADIUS_M = 500 // match buses within 500m of each stop
+
+    scanResults.bus.forEach(stop => {
+      if (!stop.lat || !stop.lon) return
+      let count = 0
+      liveBuses.forEach(bus => {
+        if (!bus.lat || !bus.lon) return
+        const dist = haversine(stop.lat, stop.lon, bus.lat, bus.lon)
+        if (dist <= MATCH_RADIUS_M) count++
+      })
+      if (count > 0) {
+        // Use stop label or coords as key
+        const key = stop.label || `${stop.lat}-${stop.lon}`
+        perStop.set(key, count)
+      }
+    })
+
+    return { total: liveBuses.length, perStop }
+  }, [liveBuses, scanResults.bus])
 
   const SNAP_PEEK = 80
   const SNAP_HALF = Math.round(window.innerHeight * 0.40)
@@ -383,6 +437,14 @@ export default function BottomPanel({
                 fontFamily: 'var(--font-mono)', fontSize: '9px',
               }}>{totalFound}</span>
             )}
+            {t === 'NEARBY' && liveBusByStop.total > 0 && (
+              <span style={{
+                marginLeft: '4px', padding: '1px 5px', borderRadius: '10px',
+                background: 'rgba(0,230,118,0.12)', color: 'var(--live)',
+                fontFamily: 'var(--font-mono)', fontSize: '9px',
+                animation: 'live-pulse 2s ease-in-out infinite',
+              }}>🚌 {liveBusByStop.total}</span>
+            )}
             {t === 'HOME ROUTES' && homeRoutes.length > 0 && (
               <span style={{
                 marginLeft: '6px', padding: '1px 5px', borderRadius: '10px',
@@ -431,12 +493,31 @@ export default function BottomPanel({
                 <div style={{
                   fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)',
                   letterSpacing: '2px', marginBottom: '8px', padding: '4px 0',
+                  display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
-                  // {totalFound} OPTIONS FOUND · TAP ANY TO SEE LIVE DEPARTURES
+                  <span>// {totalFound} OPTIONS FOUND · TAP ANY TO SEE LIVE DEPARTURES</span>
+                  {liveBusByStop.total > 0 && (
+                    <span style={{
+                      color: 'var(--live)', fontWeight: 700,
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    }}>
+                      <span style={{
+                        width: '5px', height: '5px', borderRadius: '50%',
+                        background: 'var(--live)',
+                        animation: 'live-dot-blink 1.5s ease-in-out infinite',
+                        display: 'inline-block',
+                      }}/>
+                      {liveBusByStop.total} BUSES LIVE
+                    </span>
+                  )}
                 </div>
 
-                {/* Transport rows */}
-                <TransportRow icon="🚌" color="var(--bus)"     label="Bus"         items={scanResults.bus}     onItemClick={onMarkerClick} walkFrom={from}/>
+                {/* Transport rows — bus row gets live count */}
+                <TransportRow
+                  icon="🚌" color="var(--bus)" label="Bus"
+                  items={scanResults.bus} onItemClick={onMarkerClick} walkFrom={from}
+                  liveBusCount={liveBusByStop.total}
+                />
                 <TransportRow icon="🚆" color="var(--train)"   label="Train"       items={scanResults.train}   onItemClick={onMarkerClick} walkFrom={from}/>
                 <TransportRow icon="🚋" color="var(--coach)"   label="Tram"        items={scanResults.tram}    onItemClick={onMarkerClick} walkFrom={from}/>
                 <TransportRow icon="🚇" color="var(--cyan)"    label="Metro"       items={scanResults.metro}   onItemClick={onMarkerClick} walkFrom={from}/>
@@ -522,6 +603,18 @@ export default function BottomPanel({
           </div>
         )}
       </div>
+
+      {/* Live bus animation keyframes */}
+      <style>{`
+        @keyframes live-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        @keyframes live-dot-blink {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.7); }
+        }
+      `}</style>
     </div>
   )
 }
