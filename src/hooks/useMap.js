@@ -272,49 +272,74 @@ export function useMap(containerRef) {
     buses.forEach(bus => {
       if (!bus.lat || !bus.lon) return
       const bearing = bus.bearing || 0
-      const routeLabel = bus.line || bus.lineRef || bus.publishedLineName || '?'
+      const routeLabel = bus.line || bus.lineRef || bus.publishedLineName || ''
+      if (!routeLabel) return // Skip buses with no route number
+
+      // Delay-based colour: green = on time, amber = slight delay, red = late
+      const delayMins = bus.delayMinutes || 0
+      const statusColor = delayMins > 5 ? '#ef4444' : delayMins > 2 ? '#f59e0b' : '#22c55e'
+      const short = routeLabel.slice(0, 4)
+
       const icon = L.divIcon({
         className: 'live-bus-icon',
-        html: `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">
+        html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center;width:38px;">
           <div style="
-            width:24px;height:24px;border-radius:50%;
-            background:#f59e0b;border:2px solid #fff;
-            display:flex;align-items:center;justify-content:center;
-            font-size:9px;font-weight:800;color:#000;
-            font-family:'JetBrains Mono',monospace;
-            box-shadow:0 2px 8px rgba(245,158,11,0.5);
-            animation:live-bus-pulse 2s ease-in-out infinite;
-          ">${routeLabel}</div>
-          <div style="
-            position:absolute;top:-6px;left:50%;
-            transform:translateX(-50%) rotate(${bearing}deg);
             width:0;height:0;
-            border-left:4px solid transparent;
-            border-right:4px solid transparent;
-            border-bottom:6px solid #f59e0b;
+            border-left:5px solid transparent;
+            border-right:5px solid transparent;
+            border-bottom:8px solid ${statusColor};
+            transform:rotate(${bearing}deg);
+            transform-origin:center bottom;
+            margin-bottom:1px;
+            filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6));
           "></div>
+          <div style="
+            position:relative;
+            min-width:32px;padding:2px 6px;height:22px;
+            border-radius:11px;
+            background:${statusColor};
+            border:2px solid rgba(255,255,255,0.95);
+            box-shadow:0 2px 10px rgba(0,0,0,0.5),0 0 12px ${statusColor}66;
+            display:flex;align-items:center;justify-content:center;gap:3px;
+            font-family:'JetBrains Mono',monospace;
+            font-size:${short.length <= 2 ? '11px' : '9px'};
+            font-weight:900;color:#000;
+            line-height:1;
+            animation:live-bus-pulse 2s ease-in-out infinite;
+          ">
+            <span style="
+              width:5px;height:5px;border-radius:50%;
+              background:#000;opacity:0.4;
+              animation:live-dot-blink 1.5s ease-in-out infinite;
+              flex-shrink:0;
+            "></span>
+            ${short}
+          </div>
         </div>`,
-        iconSize: [28, 34],
-        iconAnchor: [14, 17],
+        iconSize: [38, 32],
+        iconAnchor: [19, 32],
       })
 
-      const marker = L.marker([bus.lat, bus.lon], { icon, zIndexOffset: 800 })
+      const marker = L.marker([bus.lat, bus.lon], { icon, zIndexOffset: 900 })
 
-      // Build popup content from available fields
+      // Build popup
       const dest = bus.destination || bus.destinationName || ''
       const orig = bus.origin || ''
       const op   = bus.operator || bus.operatorRef || ''
       const delay = bus.delayText || ''
       const dist  = bus.distanceText || ''
 
-      let popupHTML = `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:160px;padding:4px 0">`
-      popupHTML += `<div style="font-weight:800;font-size:15px;color:#f59e0b;margin-bottom:4px">🚌 Route ${routeLabel}</div>`
+      let popupHTML = `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:170px;padding:4px 0">`
+      popupHTML += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">`
+      popupHTML += `<span style="background:${statusColor};color:#000;font-weight:900;font-size:14px;padding:2px 8px;border-radius:8px;">${routeLabel}</span>`
+      popupHTML += `<span style="font-size:9px;color:${statusColor};font-weight:700;letter-spacing:0.5px;">● LIVE</span>`
+      popupHTML += `</div>`
       if (op)    popupHTML += `<div style="color:#aaa;font-size:11px;margin-bottom:3px">${op}</div>`
       if (dest)  popupHTML += `<div style="margin-bottom:2px">→ <strong>${dest}</strong></div>`
       if (orig)  popupHTML += `<div style="color:#888;font-size:11px;margin-bottom:2px">From: ${orig}</div>`
       if (delay) popupHTML += `<div style="color:${delay.includes('late') || delay.includes('delay') ? '#ff6b6b' : '#4ade80'};font-size:11px;font-weight:600;margin-bottom:2px">${delay}</div>`
-      if (dist)  popupHTML += `<div style="color:#888;font-size:10px">${dist} away</div>`
-      popupHTML += `<div style="color:#555;font-size:9px;margin-top:4px;border-top:1px solid #333;padding-top:3px">📡 Live position</div>`
+      if (dist)  popupHTML += `<div style="color:#888;font-size:10px">${dist}</div>`
+      popupHTML += `<div style="color:#555;font-size:9px;margin-top:4px;border-top:1px solid #333;padding-top:3px">📡 Live GPS position</div>`
       popupHTML += `</div>`
 
       marker.bindPopup(popupHTML, { className: 'live-bus-popup' })
