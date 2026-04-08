@@ -79,11 +79,29 @@ export default function App() {
   const fetchLiveBuses = useCallback(async (lat, lon, busStops) => {
     try {
       const positions = await getLiveBusPositions(lat, lon, 3)
-console.log('[BODS] buses with no line:', (positions||[]).filter(b => !b.line))
-      const busList = positions || []
+      let busList = positions || []
+
+      // Filter: only keep buses on routes that serve nearby stops
+      if (busStops && busStops.length > 0 && busList.length > 0) {
+        const localRoutes = new Set()
+        busStops.forEach(stop => {
+          const refs = stop.routes || stop.ref || ''
+          refs.split(/[;,/]/).map(r => r.trim().toUpperCase()).filter(Boolean).forEach(r => localRoutes.add(r))
+        })
+        if (localRoutes.size > 0) {
+          const filtered = busList.filter(bus => {
+            const line = (bus.line || '').toUpperCase().trim()
+            return localRoutes.has(line)
+          })
+          console.log(`[BODS] Filtered ${busList.length} buses → ${filtered.length} on local routes [${[...localRoutes].join(', ')}]`)
+          busList = filtered
+        }
+      }
+
       setLiveBuses(busList)
       drawLiveBuses(busList)
 
+      // Enrich with stop-matched data
       if (busStops && busStops.length > 0) {
         try {
           const matched = await scanLiveBuses(lat, lon, busStops)
@@ -439,12 +457,8 @@ console.log('[BODS] buses with no line:', (positions||[]).filter(b => !b.line))
         .leaflet-control-attribution { margin-bottom: 4px !important; position: fixed !important; bottom: 0 !important; right: 0 !important; }
         .live-bus-icon { background: none !important; border: none !important; }
         @keyframes live-bus-pulse {
-          0%, 100% { box-shadow: 0 2px 8px rgba(34,197,94,0.4); }
-          50% { box-shadow: 0 2px 16px rgba(34,197,94,0.7); }
-        }
-        @keyframes live-dot-blink {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.9; }
+          0%, 100% { box-shadow: 0 2px 8px rgba(245,158,11,0.5); }
+          50% { box-shadow: 0 2px 16px rgba(245,158,11,0.8); }
         }
       `}</style>
     </div>
