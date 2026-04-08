@@ -71,7 +71,7 @@ export function useMap(containerRef) {
   const layersRef = useRef({
     from: null, to: null, home: null,
     transport: [], routes: [], rings: [],
-    walkLines: [], liveBuses: [],
+    walkLines: [], liveBuses: [], busRoute: null,
   })
 
   // Init map
@@ -261,6 +261,16 @@ export function useMap(containerRef) {
   }, [])
 
   // Draw live bus position markers
+  // Clear any active bus route line
+  const clearBusRoute = useCallback(() => {
+    const map = mapRef.current; if (!map) return
+    const L2 = layersRef.current
+    if (L2.busRoute) {
+      L2.busRoute.forEach(layer => { try { map.removeLayer(layer) } catch {} })
+      L2.busRoute = null
+    }
+  }, [])
+
   const drawLiveBuses = useCallback((buses) => {
     const map = mapRef.current; if (!map) return
     const L2 = layersRef.current
@@ -273,9 +283,8 @@ export function useMap(containerRef) {
       if (!bus.lat || !bus.lon) return
       const bearing = bus.bearing || 0
       const routeLabel = bus.line || bus.lineRef || bus.publishedLineName || ''
-      if (!routeLabel) return // Skip buses with no route number
+      if (!routeLabel) return
 
-      // Delay-based colour: green = on time, amber = slight delay, red = late
       const delayMins = bus.delayMinutes || 0
       const statusColor = delayMins > 5 ? '#ef4444' : delayMins > 2 ? '#f59e0b' : '#22c55e'
       const short = routeLabel.slice(0, 4)
@@ -322,7 +331,6 @@ export function useMap(containerRef) {
 
       const marker = L.marker([bus.lat, bus.lon], { icon, zIndexOffset: 900 })
 
-      // Build popup
       const dest = bus.destination || bus.destinationName || ''
       const orig = bus.origin || ''
       const op   = bus.operator || bus.operatorRef || ''
@@ -339,14 +347,102 @@ export function useMap(containerRef) {
       if (orig)  popupHTML += `<div style="color:#888;font-size:11px;margin-bottom:2px">From: ${orig}</div>`
       if (delay) popupHTML += `<div style="color:${delay.includes('late') || delay.includes('delay') ? '#ff6b6b' : '#4ade80'};font-size:11px;font-weight:600;margin-bottom:2px">${delay}</div>`
       if (dist)  popupHTML += `<div style="color:#888;font-size:10px">${dist}</div>`
-      popupHTML += `<div style="color:#555;font-size:9px;margin-top:4px;border-top:1px solid #333;padding-top:3px">📡 Live GPS position</div>`
+      popupHTML += `<div style="color:#555;font-size:9px;margin-top:4px;border-top:1px solid #333;padding-top:3px">📡 Tap for estimated route</div>`
       popupHTML += `</div>`
 
       marker.bindPopup(popupHTML, { className: 'live-bus-popup' })
+
+      // On click: fetch driving route from bus position toward destination
+      marker.on('click', async () => {
+        clearBusRoute()
+        if (!dest) return
+
+        try {
+          // Geocode the destination name to get coordinates
+          const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(dest)}&format=json&limit=1&countrycodes=gb`,
+            { headers: { 'User-Agent': 'HOMERUN-v2/1.0' } }
+          )
+          const geoData = await geoRes.json()
+          if (!geoData.length) return
+
+          const destLat = parseFloat(geoData[0].lat)
+          const destLon = parseFloat(geoData[0].lon)
+
+          // Fetch driving route via OSRM
+          const routeRes = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${bus.lon},${bus.lat};${destLon},${destLat}?overview=full&geometries=geojson`
+          )
+          const routeData = await routeRes.json()
+          if (routeData.code !== 'Ok' || !routeData.routes[0]) return
+
+          const geojson = routeData.routes[0].geometry
+          const coords = geojson.coordinates
+
+          // Draw the route line
+          const routeLine = L.geoJSON(geojson, {
+            style: {
+              color: statusColor,
+              weight: 4,
+              opacity: 0.7,
+              dashArray: '10 6',
+            }
+          }).addTo(map)
+
+          // Add direction arrows along the route
+          const arrowLayers = []
+          const arrowInterval = Math.max(1, Math.floor(coords.length / 8))
+          for (let i = arrowInterval; i < coords.length - 1; i += arrowInterval) {
+            const [lon1, lat1] = coords[i]
+            const [lon2, lat2] = coords[Math.min(i + 1, coords.length - 1)]
+            const angle = Math.atan2(lon2 - lon1, lat2 - lat1) * 180 / Math.PI
+
+            const arrowIcon = L.divIcon({
+              className: '',
+              html: `<div style="
+                width:14px;height:14px;
+                display:flex;align-items:center;justify-content:center;
+                transform:rotate(${-angle + 90}deg);
+                font-size:12px;
+                color:${statusColor};
+                filter:drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+                pointer-events:none;
+              ">►</div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 7],
+            })
+            const arrowMarker = L.marker([lat1, lon1], { icon: arrowIcon, interactive: false, zIndexOffset: 850 }).addTo(map)
+            arrowLayers.push(arrowMarker)
+          }
+
+          // Add destination marker
+          const destIcon = L.divIcon({
+            className: '',
+            html: `<div style="
+              width:24px;height:24px;border-radius:50%;
+              background:${statusColor}33;border:2px solid ${statusColor};
+              display:flex;align-items:center;justify-content:center;
+              font-size:12px;
+              box-shadow:0 2px 8px rgba(0,0,0,0.4);
+            ">🏁</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          })
+          const destMarker = L.marker([destLat, destLon], { icon: destIcon, zIndexOffset: 850 })
+            .bindPopup(`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px"><strong>${routeLabel}</strong> destination<br/>${dest}</div>`)
+            .addTo(map)
+
+          L2.busRoute = [routeLine, destMarker, ...arrowLayers]
+
+        } catch (err) {
+          console.warn('[BODS] Route fetch failed:', err.message)
+        }
+      })
+
       marker.addTo(map)
       L2.liveBuses.push(marker)
     })
-  }, [])
+  }, [clearBusRoute])
 
   // Clear live bus markers only
   const clearLiveBuses = useCallback(() => {
@@ -421,5 +517,5 @@ export function useMap(containerRef) {
     mapRef.current.flyToBounds(bounds, { padding: [60, 60], duration: 1.2, maxZoom: 15 })
   }, [])
 
-  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawLiveBuses, clearLiveBuses, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer, setLongPressCallback, greyMarker }
+  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawLiveBuses, clearLiveBuses, clearBusRoute, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer, setLongPressCallback, greyMarker }
 }
