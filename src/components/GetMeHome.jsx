@@ -1,8 +1,10 @@
 // GetMeHome.jsx — Smart journey optimiser
 // Uses Transitous with datetime parameter for real UK transit routing
+// With live Darwin train verification for rail legs
 
 import { useState, useCallback, useEffect } from 'react'
 import { fmtDist, fmtDuration } from '../utils/api'
+import { enrichAllItineraries } from '../utils/darwinLive.js'
 
 const TRANSITOUS = 'https://api.transitous.org/api/v1/plan'
 
@@ -112,6 +114,45 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
           {transfers > 0 && <span>🔄 {transfers} change{transfers !== 1 ? 's' : ''}</span>}
           {transitLegs.length === 0 && <span>👟 Walking only</span>}
         </div>
+
+        {/* Live confidence indicator from Darwin */}
+        {journey.liveConfidence && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            marginTop: '6px', padding: '4px 8px', borderRadius: '5px',
+            background: journey.liveConfidence === 'confirmed' ? 'rgba(0,230,118,0.08)'
+              : journey.liveConfidence === 'delays' ? 'rgba(255,215,0,0.08)'
+              : journey.liveConfidence === 'disrupted' ? 'rgba(239,68,68,0.08)'
+              : 'rgba(107,114,128,0.08)',
+            border: `1px solid ${
+              journey.liveConfidence === 'confirmed' ? 'rgba(0,230,118,0.2)'
+              : journey.liveConfidence === 'delays' ? 'rgba(255,215,0,0.2)'
+              : journey.liveConfidence === 'disrupted' ? 'rgba(239,68,68,0.2)'
+              : 'rgba(107,114,128,0.2)'
+            }`,
+          }}>
+            <div style={{
+              width: '6px', height: '6px', borderRadius: '50%',
+              background: journey.liveConfidence === 'confirmed' ? '#00e676'
+                : journey.liveConfidence === 'delays' ? '#ffd700'
+                : journey.liveConfidence === 'disrupted' ? '#ef4444'
+                : '#6b7280',
+              animation: journey.liveConfidence !== 'timetable' ? 'liveDot 1.5s infinite' : 'none',
+            }}/>
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 700, letterSpacing: '1px',
+              color: journey.liveConfidence === 'confirmed' ? '#00e676'
+                : journey.liveConfidence === 'delays' ? '#ffd700'
+                : journey.liveConfidence === 'disrupted' ? '#ef4444'
+                : '#6b7280',
+            }}>
+              {journey.liveConfidence === 'confirmed' ? '● LIVE — ALL TRAINS ON TIME'
+                : journey.liveConfidence === 'delays' ? '● DELAYS ON THIS ROUTE'
+                : journey.liveConfidence === 'disrupted' ? '● DISRUPTED — TRAINS CANCELLED'
+                : '● TIMETABLE ONLY'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Expanded step by step */}
@@ -165,6 +206,20 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
                         {!isWalk && leg.to?.name && (
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                             To: {leg.to.name}
+                          </div>
+                        )}
+                        {/* Live Darwin status for rail legs */}
+                        {!isWalk && leg.liveStatus?.confidence === 'live' && (
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            marginTop: '4px', padding: '2px 7px', borderRadius: '4px',
+                            background: `${leg.liveStatus.color}15`,
+                            border: `1px solid ${leg.liveStatus.color}30`,
+                            fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700,
+                            color: leg.liveStatus.color,
+                          }}>
+                            <span>{leg.liveStatus.icon}</span>
+                            <span>{leg.liveStatus.message}</span>
                           </div>
                         )}
                       </div>
@@ -238,11 +293,21 @@ export default function GetMeHome({ from, to, onClose }) {
       const itins = data.itineraries || []
       if (itins.length === 0) throw new Error('No routes found — try a different time or destination')
 
-      // Sort by duration
-      itins.sort((a, b) => a.duration - b.duration)
-      if (itins[0]) itins[0].fastest = true
+      // Enrich rail legs with live Darwin data (platform, delays, cancellations)
+      let enriched = itins
+      try {
+        enriched = await enrichAllItineraries(itins)
+        console.log('[Darwin] Enriched', enriched.length, 'itineraries in GetMeHome')
+      } catch (err) {
+        console.warn('[Darwin] GetMeHome enrichment failed:', err.message)
+        enriched = itins
+      }
 
-      setJourneys(itins)
+      // Sort by duration
+      enriched.sort((a, b) => a.duration - b.duration)
+      if (enriched[0]) enriched[0].fastest = true
+
+      setJourneys(enriched)
       setActiveIdx(0)
     } catch (err) {
       setError(err.message)
