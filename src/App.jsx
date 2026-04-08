@@ -43,7 +43,6 @@ export default function App() {
 
   // ── BODS live bus state ───────────────────────
   const [liveBuses,         setLiveBuses]        = useState([])
-  const [liveBusMarkers,    setLiveBusMarkers]   = useState([])
   const liveBusIntervalRef = useRef(null)
 
   const { toasts, showToast } = useToast()
@@ -51,6 +50,7 @@ export default function App() {
     mapRef: leafletMapRef,
     setFromMarker, setToMarker,
     drawScanRings, drawTransportMarkers, drawWalkLines,
+    drawLiveBuses, clearLiveBuses,
     drawRoutes, flyTo, flyToBounds, fitItems,
     switchTileLayer, setLongPressCallback, greyMarker } = useMap(mapRef)
 
@@ -75,94 +75,27 @@ export default function App() {
   // ── Redraw routes on active change ────────────
   useEffect(() => { drawRoutes(homeRoutes, activeRouteIdx) }, [homeRoutes, activeRouteIdx])
 
-  // ── BODS live bus marker rendering ────────────
-  const renderLiveBusMarkers = useCallback((busPositions) => {
-    const map = leafletMapRef?.current
-    if (!map) return
-
-    // Clear previous live bus markers
-    liveBusMarkers.forEach(m => { try { map.removeLayer(m) } catch {} })
-
-    if (!busPositions || busPositions.length === 0) {
-      setLiveBusMarkers([])
-      return
-    }
-
-    const L = window.L
-    if (!L) return
-
-    const newMarkers = busPositions.map(bus => {
-      const bearing = bus.bearing || 0
-      const routeLabel = bus.lineRef || bus.publishedLineName || '?'
-      const icon = L.divIcon({
-        className: 'live-bus-icon',
-        html: `<div style="
-          position:relative; width:28px; height:28px;
-          display:flex; align-items:center; justify-content:center;
-        ">
-          <div style="
-            width:24px; height:24px; border-radius:50%;
-            background:#f59e0b; border:2px solid #fff;
-            display:flex; align-items:center; justify-content:center;
-            font-size:9px; font-weight:800; color:#000;
-            font-family:var(--font-mono);
-            box-shadow:0 2px 8px rgba(245,158,11,0.5);
-            transform:rotate(0deg);
-          ">${routeLabel}</div>
-          <div style="
-            position:absolute; top:-6px; left:50%; transform:translateX(-50%) rotate(${bearing}deg);
-            width:0; height:0;
-            border-left:4px solid transparent;
-            border-right:4px solid transparent;
-            border-bottom:6px solid #f59e0b;
-          "></div>
-        </div>`,
-        iconSize: [28, 34],
-        iconAnchor: [14, 17],
-      })
-
-      const marker = L.marker([bus.lat, bus.lon], { icon, zIndexOffset: 800 })
-      marker.bindPopup(`
-        <div style="font-family:var(--font-mono);font-size:12px;min-width:140px">
-          <div style="font-weight:800;font-size:14px;color:#f59e0b;margin-bottom:4px">
-            🚌 Route ${routeLabel}
-          </div>
-          ${bus.operatorRef ? `<div style="color:#999;font-size:11px;margin-bottom:2px">${bus.operatorRef}</div>` : ''}
-          ${bus.destinationName ? `<div style="margin-bottom:2px">→ ${bus.destinationName}</div>` : ''}
-          ${bus.speed ? `<div style="color:#888;font-size:10px">${Math.round(bus.speed)} km/h</div>` : ''}
-          <div style="color:#666;font-size:9px;margin-top:4px">Live position</div>
-        </div>
-      `, { className: 'live-bus-popup' })
-
-      marker.addTo(map)
-      return marker
-    })
-
-    setLiveBusMarkers(newMarkers)
-  }, [leafletMapRef, liveBusMarkers])
-
   // ── BODS live bus fetching + 30s refresh ──────
   const fetchLiveBuses = useCallback(async (lat, lon, busStops) => {
     try {
-      // Fetch live bus positions within 3km radius
       const positions = await getLiveBusPositions(lat, lon, 3)
-      setLiveBuses(positions || [])
-      renderLiveBusMarkers(positions || [])
+      const busList = positions || []
+      setLiveBuses(busList)
+      drawLiveBuses(busList)
 
-      // Also match buses to nearby stops if we have stop data
       if (busStops && busStops.length > 0) {
         try {
           const matched = await scanLiveBuses(lat, lon, busStops)
-          // matched data enriches stop info — store for BottomPanel
           if (matched && matched.length > 0) {
             setLiveBuses(prev => {
-              // Merge: keep all positions, add matched stop info
               const posMap = new Map((prev || []).map(b => [b.vehicleRef || `${b.lat}-${b.lon}`, b]))
               matched.forEach(b => {
                 const key = b.vehicleRef || `${b.lat}-${b.lon}`
                 posMap.set(key, { ...posMap.get(key), ...b })
               })
-              return Array.from(posMap.values())
+              const merged = Array.from(posMap.values())
+              drawLiveBuses(merged)
+              return merged
             })
           }
         } catch (e) {
@@ -172,7 +105,7 @@ export default function App() {
     } catch (e) {
       console.warn('getLiveBusPositions failed:', e)
     }
-  }, [renderLiveBusMarkers])
+  }, [drawLiveBuses])
 
   const startLiveBusRefresh = useCallback((lat, lon, busStops) => {
     // Clear any existing interval
@@ -212,8 +145,7 @@ export default function App() {
     setLocalTaxis([])
     setLiveBuses([])
     // Clear live bus markers + interval on new scan
-    liveBusMarkers.forEach(m => { try { leafletMapRef?.current?.removeLayer(m) } catch {} })
-    setLiveBusMarkers([])
+    clearLiveBuses()
     if (liveBusIntervalRef.current) {
       clearInterval(liveBusIntervalRef.current)
       liveBusIntervalRef.current = null
@@ -250,7 +182,7 @@ export default function App() {
       showToast('⚠️ Scan partial — check connection', 'warn')
     }
     scanningRef.current = false
-  }, [drawScanRings, drawTransportMarkers, drawWalkLines, fitItems, flyTo, showToast, startLiveBusRefresh, liveBusMarkers, leafletMapRef])
+  }, [drawScanRings, drawTransportMarkers, drawWalkLines, fitItems, flyTo, showToast, startLiveBusRefresh, clearLiveBuses])
 
   // ── GPS landing ───────────────────────────────
   const handleLanded = useCallback(() => {
@@ -404,14 +336,13 @@ export default function App() {
     drawRoutes([], 0)
     // Clear live buses on reset
     setLiveBuses([])
-    liveBusMarkers.forEach(m => { try { leafletMapRef?.current?.removeLayer(m) } catch {} })
-    setLiveBusMarkers([])
+    clearLiveBuses()
     if (liveBusIntervalRef.current) {
       clearInterval(liveBusIntervalRef.current)
       liveBusIntervalRef.current = null
     }
     showToast('↺ Reset — ready for new search')
-  }, [drawRoutes, setFromMarker, setToMarker, showToast, liveBusMarkers, leafletMapRef])
+  }, [drawRoutes, setFromMarker, setToMarker, showToast, clearLiveBuses])
 
   // ── Save home ─────────────────────────────────
   const handleSaveHome = useCallback(() => {
