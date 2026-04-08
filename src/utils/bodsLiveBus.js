@@ -89,7 +89,7 @@ export async function fetchLiveBuses(lat, lon, radiusKm = 2) {
  * Direct BODS API call.
  */
 async function fetchBodsDirect(boundingBox) {
-  const url = `${BODS_BASE_URL}?api_key=${BODS_API_KEY}&boundingBox=${boundingBox}&status=published`;
+  const url = `${BODS_BASE_URL}?api_key=${BODS_API_KEY}&boundingBox=${boundingBox}`;
 
   const response = await fetch(url, {
     headers: {
