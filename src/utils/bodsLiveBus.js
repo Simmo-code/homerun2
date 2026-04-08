@@ -93,7 +93,7 @@ async function fetchBodsDirect(boundingBox) {
 
   const response = await fetch(url, {
     headers: {
-      'Accept': 'application/xml',
+      'Accept': 'text/xml',
     },
   });
 
