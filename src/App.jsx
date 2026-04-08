@@ -50,7 +50,7 @@ export default function App() {
     mapRef: leafletMapRef,
     setFromMarker, setToMarker,
     drawScanRings, drawTransportMarkers, drawWalkLines,
-    drawLiveBuses, clearLiveBuses,
+    drawLiveBuses, clearLiveBuses, clearBusRoute,
     drawRoutes, flyTo, flyToBounds, fitItems,
     switchTileLayer, setLongPressCallback, greyMarker } = useMap(mapRef)
 
@@ -163,8 +163,9 @@ export default function App() {
     setScanResults(EMPTY_SCAN)
     setLocalTaxis([])
     setLiveBuses([])
-    // Clear live bus markers + interval on new scan
+    // Clear live bus markers + route + interval on new scan
     clearLiveBuses()
+    clearBusRoute()
     if (liveBusIntervalRef.current) {
       clearInterval(liveBusIntervalRef.current)
       liveBusIntervalRef.current = null
@@ -201,7 +202,7 @@ export default function App() {
       showToast('⚠️ Scan partial — check connection', 'warn')
     }
     scanningRef.current = false
-  }, [drawScanRings, drawTransportMarkers, drawWalkLines, fitItems, flyTo, showToast, startLiveBusRefresh, clearLiveBuses])
+  }, [drawScanRings, drawTransportMarkers, drawWalkLines, fitItems, flyTo, showToast, startLiveBusRefresh, clearLiveBuses, clearBusRoute])
 
   // ── GPS landing ───────────────────────────────
   const handleLanded = useCallback(() => {
@@ -356,12 +357,13 @@ export default function App() {
     // Clear live buses on reset
     setLiveBuses([])
     clearLiveBuses()
+    clearBusRoute()
     if (liveBusIntervalRef.current) {
       clearInterval(liveBusIntervalRef.current)
       liveBusIntervalRef.current = null
     }
     showToast('↺ Reset — ready for new search')
-  }, [drawRoutes, setFromMarker, setToMarker, showToast, clearLiveBuses])
+  }, [drawRoutes, setFromMarker, setToMarker, showToast, clearLiveBuses, clearBusRoute])
 
   // ── Save home ─────────────────────────────────
   const handleSaveHome = useCallback(() => {
