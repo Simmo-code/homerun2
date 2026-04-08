@@ -1,4 +1,5 @@
 // App.jsx v2 — HOMERUN Scan-First Architecture
+// Updated: BODS live bus positions wired in
 import { useState, useEffect, useRef, useCallback } from 'react'
 import TopBar        from './components/TopBar'
 import LandButton    from './components/LandButton'
@@ -13,6 +14,7 @@ import {
   reverseGeocode, geocodeSearch, deepScan, scanLocalTaxis,
   walkingRoute, computeHomeRoutes, parseUrlParams,
   fmtDist, fmtWalk, haversine,
+  getLiveBusPositions, scanLiveBuses,
 } from './utils/api'
 
 const EMPTY_SCAN = { bus:[], train:[], tram:[], metro:[], taxi:[], car:[], cycle:[], ferry:[], coach:[], air:[], scooter:[] }
@@ -38,6 +40,11 @@ export default function App() {
   const [home,              setHome]             = useState(() => {
     try { return JSON.parse(localStorage.getItem('homerun_home') || 'null') } catch { return null }
   })
+
+  // ── BODS live bus state ───────────────────────
+  const [liveBuses,         setLiveBuses]        = useState([])
+  const [liveBusMarkers,    setLiveBusMarkers]   = useState([])
+  const liveBusIntervalRef = useRef(null)
 
   const { toasts, showToast } = useToast()
   const {
@@ -68,6 +75,130 @@ export default function App() {
   // ── Redraw routes on active change ────────────
   useEffect(() => { drawRoutes(homeRoutes, activeRouteIdx) }, [homeRoutes, activeRouteIdx])
 
+  // ── BODS live bus marker rendering ────────────
+  const renderLiveBusMarkers = useCallback((busPositions) => {
+    const map = leafletMapRef?.current
+    if (!map) return
+
+    // Clear previous live bus markers
+    liveBusMarkers.forEach(m => { try { map.removeLayer(m) } catch {} })
+
+    if (!busPositions || busPositions.length === 0) {
+      setLiveBusMarkers([])
+      return
+    }
+
+    const L = window.L
+    if (!L) return
+
+    const newMarkers = busPositions.map(bus => {
+      const bearing = bus.bearing || 0
+      const routeLabel = bus.lineRef || bus.publishedLineName || '?'
+      const icon = L.divIcon({
+        className: 'live-bus-icon',
+        html: `<div style="
+          position:relative; width:28px; height:28px;
+          display:flex; align-items:center; justify-content:center;
+        ">
+          <div style="
+            width:24px; height:24px; border-radius:50%;
+            background:#f59e0b; border:2px solid #fff;
+            display:flex; align-items:center; justify-content:center;
+            font-size:9px; font-weight:800; color:#000;
+            font-family:var(--font-mono);
+            box-shadow:0 2px 8px rgba(245,158,11,0.5);
+            transform:rotate(0deg);
+          ">${routeLabel}</div>
+          <div style="
+            position:absolute; top:-6px; left:50%; transform:translateX(-50%) rotate(${bearing}deg);
+            width:0; height:0;
+            border-left:4px solid transparent;
+            border-right:4px solid transparent;
+            border-bottom:6px solid #f59e0b;
+          "></div>
+        </div>`,
+        iconSize: [28, 34],
+        iconAnchor: [14, 17],
+      })
+
+      const marker = L.marker([bus.lat, bus.lon], { icon, zIndexOffset: 800 })
+      marker.bindPopup(`
+        <div style="font-family:var(--font-mono);font-size:12px;min-width:140px">
+          <div style="font-weight:800;font-size:14px;color:#f59e0b;margin-bottom:4px">
+            🚌 Route ${routeLabel}
+          </div>
+          ${bus.operatorRef ? `<div style="color:#999;font-size:11px;margin-bottom:2px">${bus.operatorRef}</div>` : ''}
+          ${bus.destinationName ? `<div style="margin-bottom:2px">→ ${bus.destinationName}</div>` : ''}
+          ${bus.speed ? `<div style="color:#888;font-size:10px">${Math.round(bus.speed)} km/h</div>` : ''}
+          <div style="color:#666;font-size:9px;margin-top:4px">Live position</div>
+        </div>
+      `, { className: 'live-bus-popup' })
+
+      marker.addTo(map)
+      return marker
+    })
+
+    setLiveBusMarkers(newMarkers)
+  }, [leafletMapRef, liveBusMarkers])
+
+  // ── BODS live bus fetching + 30s refresh ──────
+  const fetchLiveBuses = useCallback(async (lat, lon, busStops) => {
+    try {
+      // Fetch live bus positions within 3km radius
+      const positions = await getLiveBusPositions(lat, lon, 3)
+      setLiveBuses(positions || [])
+      renderLiveBusMarkers(positions || [])
+
+      // Also match buses to nearby stops if we have stop data
+      if (busStops && busStops.length > 0) {
+        try {
+          const matched = await scanLiveBuses(lat, lon, busStops)
+          // matched data enriches stop info — store for BottomPanel
+          if (matched && matched.length > 0) {
+            setLiveBuses(prev => {
+              // Merge: keep all positions, add matched stop info
+              const posMap = new Map((prev || []).map(b => [b.vehicleRef || `${b.lat}-${b.lon}`, b]))
+              matched.forEach(b => {
+                const key = b.vehicleRef || `${b.lat}-${b.lon}`
+                posMap.set(key, { ...posMap.get(key), ...b })
+              })
+              return Array.from(posMap.values())
+            })
+          }
+        } catch (e) {
+          console.warn('scanLiveBuses enrichment failed:', e)
+        }
+      }
+    } catch (e) {
+      console.warn('getLiveBusPositions failed:', e)
+    }
+  }, [renderLiveBusMarkers])
+
+  const startLiveBusRefresh = useCallback((lat, lon, busStops) => {
+    // Clear any existing interval
+    if (liveBusIntervalRef.current) {
+      clearInterval(liveBusIntervalRef.current)
+      liveBusIntervalRef.current = null
+    }
+
+    // Initial fetch
+    fetchLiveBuses(lat, lon, busStops)
+
+    // Set up 30-second refresh
+    liveBusIntervalRef.current = setInterval(() => {
+      fetchLiveBuses(lat, lon, busStops)
+    }, 30000)
+  }, [fetchLiveBuses])
+
+  // Clean up interval on unmount or reset
+  useEffect(() => {
+    return () => {
+      if (liveBusIntervalRef.current) {
+        clearInterval(liveBusIntervalRef.current)
+      }
+    }
+  }, [])
+
   // ── Full scan sequence ────────────────────────
   const handleSetFrom = useCallback(async (loc) => {
     if (scanningRef.current) return
@@ -79,6 +210,14 @@ export default function App() {
     setScanState('scanning')
     setScanResults(EMPTY_SCAN)
     setLocalTaxis([])
+    setLiveBuses([])
+    // Clear live bus markers + interval on new scan
+    liveBusMarkers.forEach(m => { try { leafletMapRef?.current?.removeLayer(m) } catch {} })
+    setLiveBusMarkers([])
+    if (liveBusIntervalRef.current) {
+      clearInterval(liveBusIntervalRef.current)
+      liveBusIntervalRef.current = null
+    }
     showToast('📡 Scanning all transport networks…')
     try {
       const [scan, taxis] = await Promise.all([
@@ -102,11 +241,16 @@ export default function App() {
       if (allItems.length > 0) fitItems([{ lat: loc.lat, lon: loc.lon }, ...allItems])
       const total = Object.values(scan).flat().length + taxis.length
       showToast(`✅ Found ${total} transport options`, 'success')
+
+      // ── Start BODS live bus fetch + auto-refresh ──
+      startLiveBusRefresh(loc.lat, loc.lon, scan.bus || [])
+
     } catch {
       setScanState('done')
       showToast('⚠️ Scan partial — check connection', 'warn')
     }
-  }, [drawScanRings, drawTransportMarkers, drawWalkLines, fitItems, flyTo, showToast])
+    scanningRef.current = false
+  }, [drawScanRings, drawTransportMarkers, drawWalkLines, fitItems, flyTo, showToast, startLiveBusRefresh, liveBusMarkers, leafletMapRef])
 
   // ── GPS landing ───────────────────────────────
   const handleLanded = useCallback(() => {
@@ -233,16 +377,17 @@ export default function App() {
     setLocalTaxis([])
     try {
       const [scan, taxis] = await Promise.all([
-        scanNearby(from.lat, from.lon),
+        deepScan(from.lat, from.lon),
         scanLocalTaxis(from.lat, from.lon),
       ])
       setScanResults(scan)
       setLocalTaxis(taxis)
-      drawTransportMarkers(scan, from)
-      drawWalkLines(from, scan.bus[0], scan.train[0])
+      drawTransportMarkers(scan, handleMarkerClick)
+      // Restart live bus refresh with new scan data
+      startLiveBusRefresh(from.lat, from.lon, scan.bus || [])
     } catch {}
     setScanState('done')
-  }, [from, drawTransportMarkers, drawWalkLines])
+  }, [from, drawTransportMarkers, handleMarkerClick, startLiveBusRefresh])
 
   const handleReset = useCallback(() => {
     setFrom(null)
@@ -257,8 +402,16 @@ export default function App() {
     setFromMarker(null)
     setToMarker(null)
     drawRoutes([], 0)
+    // Clear live buses on reset
+    setLiveBuses([])
+    liveBusMarkers.forEach(m => { try { leafletMapRef?.current?.removeLayer(m) } catch {} })
+    setLiveBusMarkers([])
+    if (liveBusIntervalRef.current) {
+      clearInterval(liveBusIntervalRef.current)
+      liveBusIntervalRef.current = null
+    }
     showToast('↺ Reset — ready for new search')
-  }, [drawRoutes, setFromMarker, setToMarker, showToast])
+  }, [drawRoutes, setFromMarker, setToMarker, showToast, liveBusMarkers, leafletMapRef])
 
   // ── Save home ─────────────────────────────────
   const handleSaveHome = useCallback(() => {
@@ -302,7 +455,7 @@ export default function App() {
         scanning={scanState === 'scanning'}
       />
 
-      {/* Bottom panel */}
+      {/* Bottom panel — now receives liveBuses */}
       <BottomPanel
         noDataStops={noDataStops}
         from={from}
@@ -320,6 +473,7 @@ export default function App() {
         onGetMeHome={(item) => { setGetHomeFrom(item ? { lat: item.lat, lon: item.lon, name: item.label } : null); setShowGetHome(true) }}
         geocodeSearch={geocodeSearch}
         homeRoutesLoading={homeRoutesLoading}
+        liveBuses={liveBuses}
       />
 
       {/* Departure board */}
@@ -351,6 +505,11 @@ export default function App() {
       <style>{`
         .leaflet-control-zoom { margin-bottom: 100px !important; margin-right: 16px !important; } .leaflet-right { right: 0 !important; }
         .leaflet-control-attribution { margin-bottom: 4px !important; position: fixed !important; bottom: 0 !important; right: 0 !important; }
+        .live-bus-icon { background: none !important; border: none !important; }
+        @keyframes live-bus-pulse {
+          0%, 100% { box-shadow: 0 2px 8px rgba(245,158,11,0.5); }
+          50% { box-shadow: 0 2px 16px rgba(245,158,11,0.8); }
+        }
       `}</style>
     </div>
   )
