@@ -439,8 +439,12 @@ console.log('[BODS] buses with no line:', (positions||[]).filter(b => !b.line))
         .leaflet-control-attribution { margin-bottom: 4px !important; position: fixed !important; bottom: 0 !important; right: 0 !important; }
         .live-bus-icon { background: none !important; border: none !important; }
         @keyframes live-bus-pulse {
-          0%, 100% { box-shadow: 0 2px 8px rgba(245,158,11,0.5); }
-          50% { box-shadow: 0 2px 16px rgba(245,158,11,0.8); }
+          0%, 100% { box-shadow: 0 2px 8px rgba(34,197,94,0.4); }
+          50% { box-shadow: 0 2px 16px rgba(34,197,94,0.7); }
+        }
+        @keyframes live-dot-blink {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.9; }
         }
       `}</style>
     </div>
