@@ -71,7 +71,7 @@ export function useMap(containerRef) {
   const layersRef = useRef({
     from: null, to: null, home: null,
     transport: [], routes: [], rings: [],
-    walkLines: [],
+    walkLines: [], liveBuses: [],
   })
 
   // Init map
@@ -260,6 +260,77 @@ export function useMap(containerRef) {
     })
   }, [])
 
+  // Draw live bus position markers
+  const drawLiveBuses = useCallback((buses) => {
+    const map = mapRef.current; if (!map) return
+    const L2 = layersRef.current
+    L2.liveBuses.forEach(m => { try { map.removeLayer(m) } catch {} })
+    L2.liveBuses = []
+
+    if (!buses || buses.length === 0) return
+
+    buses.forEach(bus => {
+      if (!bus.lat || !bus.lon) return
+      const bearing = bus.bearing || 0
+      const routeLabel = bus.line || bus.lineRef || bus.publishedLineName || '?'
+      const icon = L.divIcon({
+        className: 'live-bus-icon',
+        html: `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">
+          <div style="
+            width:24px;height:24px;border-radius:50%;
+            background:#f59e0b;border:2px solid #fff;
+            display:flex;align-items:center;justify-content:center;
+            font-size:9px;font-weight:800;color:#000;
+            font-family:'JetBrains Mono',monospace;
+            box-shadow:0 2px 8px rgba(245,158,11,0.5);
+            animation:live-bus-pulse 2s ease-in-out infinite;
+          ">${routeLabel}</div>
+          <div style="
+            position:absolute;top:-6px;left:50%;
+            transform:translateX(-50%) rotate(${bearing}deg);
+            width:0;height:0;
+            border-left:4px solid transparent;
+            border-right:4px solid transparent;
+            border-bottom:6px solid #f59e0b;
+          "></div>
+        </div>`,
+        iconSize: [28, 34],
+        iconAnchor: [14, 17],
+      })
+
+      const marker = L.marker([bus.lat, bus.lon], { icon, zIndexOffset: 800 })
+
+      // Build popup content from available fields
+      const dest = bus.destination || bus.destinationName || ''
+      const orig = bus.origin || ''
+      const op   = bus.operator || bus.operatorRef || ''
+      const delay = bus.delayText || ''
+      const dist  = bus.distanceText || ''
+
+      let popupHTML = `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:160px;padding:4px 0">`
+      popupHTML += `<div style="font-weight:800;font-size:15px;color:#f59e0b;margin-bottom:4px">🚌 Route ${routeLabel}</div>`
+      if (op)    popupHTML += `<div style="color:#aaa;font-size:11px;margin-bottom:3px">${op}</div>`
+      if (dest)  popupHTML += `<div style="margin-bottom:2px">→ <strong>${dest}</strong></div>`
+      if (orig)  popupHTML += `<div style="color:#888;font-size:11px;margin-bottom:2px">From: ${orig}</div>`
+      if (delay) popupHTML += `<div style="color:${delay.includes('late') || delay.includes('delay') ? '#ff6b6b' : '#4ade80'};font-size:11px;font-weight:600;margin-bottom:2px">${delay}</div>`
+      if (dist)  popupHTML += `<div style="color:#888;font-size:10px">${dist} away</div>`
+      popupHTML += `<div style="color:#555;font-size:9px;margin-top:4px;border-top:1px solid #333;padding-top:3px">📡 Live position</div>`
+      popupHTML += `</div>`
+
+      marker.bindPopup(popupHTML, { className: 'live-bus-popup' })
+      marker.addTo(map)
+      L2.liveBuses.push(marker)
+    })
+  }, [])
+
+  // Clear live bus markers only
+  const clearLiveBuses = useCallback(() => {
+    const map = mapRef.current; if (!map) return
+    const L2 = layersRef.current
+    L2.liveBuses.forEach(m => { try { map.removeLayer(m) } catch {} })
+    L2.liveBuses = []
+  }, [])
+
   // Draw home routes
   const drawRoutes = useCallback((routes, activeIdx) => {
     const map = mapRef.current; if (!map) return
@@ -325,5 +396,5 @@ export function useMap(containerRef) {
     mapRef.current.flyToBounds(bounds, { padding: [60, 60], duration: 1.2, maxZoom: 15 })
   }, [])
 
-  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer, setLongPressCallback, greyMarker }
+  return { mapRef, setFromMarker, setToMarker, drawScanRings, drawTransportMarkers, drawWalkLines, drawLiveBuses, clearLiveBuses, drawRoutes, flyTo, flyToBounds, fitItems, switchTileLayer, setLongPressCallback, greyMarker }
 }
