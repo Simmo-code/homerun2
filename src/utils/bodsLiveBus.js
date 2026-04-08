@@ -130,6 +130,7 @@ function parseVehicleActivity(activity, centreLat, centreLon) {
   const recordedAt = getText(activity, 'RecordedAtTime');
   const lineRef = getText(activity, 'LineRef');
   const lineName = getText(activity, 'PublishedLineName') || lineRef;
+  if (!lineName) return null; // Skip buses with no route number
   const direction = getText(activity, 'DirectionRef');
   const operatorRef = getText(activity, 'OperatorRef');
   const destinationName = getText(activity, 'DestinationName');
