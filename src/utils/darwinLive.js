@@ -185,22 +185,20 @@ function parseDarwinXml(xmlText) {
 function matchService(scheduledTime, destinationName, darwinServices) {
   if (!scheduledTime || !darwinServices.length) return null;
 
-  const targetHHMM = scheduledTime.substring(0, 5); // "14:23"
-  const normalizedDest = normalizeStationName(destinationName);
+  const targetHHMM = scheduledTime.substring(0, 5);
+  const normalizedDest = normalizeStationName(destinationName) || '';
 
   // Try exact time + destination match first
   for (const service of darwinServices) {
     if (service.scheduledDeparture === targetHHMM) {
-      // Check if destination matches
-      const destMatch = service.destinations.some(d =>
-        normalizeStationName(d).includes(normalizedDest) ||
-        normalizedDest.includes(normalizeStationName(d))
-      );
-      // Also check calling points
-      const callingMatch = service.callingPoints.some(cp =>
-        normalizeStationName(cp.name).includes(normalizedDest) ||
-        normalizedDest.includes(normalizeStationName(cp.name))
-      );
+      const destMatch = normalizedDest && service.destinations.some(d => {
+        const nd = normalizeStationName(d) || '';
+        return nd && (nd.includes(normalizedDest) || normalizedDest.includes(nd));
+      });
+      const callingMatch = normalizedDest && service.callingPoints.some(cp => {
+        const nc = normalizeStationName(cp.name) || '';
+        return nc && (nc.includes(normalizedDest) || normalizedDest.includes(nc));
+      });
 
       if (destMatch || callingMatch) {
         return service;
@@ -208,24 +206,24 @@ function matchService(scheduledTime, destinationName, darwinServices) {
     }
   }
 
-  // Fallback: match within ±2 minutes (Transitous times can be slightly off)
+  // Fallback: match within ±2 minutes
   for (const service of darwinServices) {
     if (!service.scheduledDeparture) continue;
     const diff = timeDiffMinutes(targetHHMM, service.scheduledDeparture);
     if (Math.abs(diff) <= 2) {
-      const destMatch = service.destinations.some(d =>
-        normalizeStationName(d).includes(normalizedDest) ||
-        normalizedDest.includes(normalizeStationName(d))
-      );
-      const callingMatch = service.callingPoints.some(cp =>
-        normalizeStationName(cp.name).includes(normalizedDest) ||
-        normalizedDest.includes(normalizeStationName(cp.name))
-      );
+      const destMatch = normalizedDest && service.destinations.some(d => {
+        const nd = normalizeStationName(d) || '';
+        return nd && (nd.includes(normalizedDest) || normalizedDest.includes(nd));
+      });
+      const callingMatch = normalizedDest && service.callingPoints.some(cp => {
+        const nc = normalizeStationName(cp.name) || '';
+        return nc && (nc.includes(normalizedDest) || normalizedDest.includes(nc));
+      });
       if (destMatch || callingMatch) return service;
     }
   }
 
-  // Last resort: time match only (if no destination info from Transitous)
+  // Last resort: time match only (if no destination info)
   if (!destinationName) {
     for (const service of darwinServices) {
       if (service.scheduledDeparture === targetHHMM) return service;
@@ -340,7 +338,7 @@ function getLiveStatus(service) {
 export async function enrichRailLeg(leg) {
   // Only enrich rail/train legs
   const mode = (leg.mode || leg.transitLeg?.mode || '').toUpperCase();
-  if (!['RAIL', 'TRAIN', 'SUBWAY', 'TRAM'].includes(mode) && !leg.routeType?.includes('rail')) {
+  if (!['RAIL', 'TRAIN', 'SUBWAY', 'TRAM'].includes(mode) && !(typeof leg.routeType === 'string' && leg.routeType.includes('rail'))) {
     return { ...leg, liveStatus: getLiveStatus(null) };
   }
 
