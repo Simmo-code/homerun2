@@ -79,6 +79,7 @@ export default function App() {
   const fetchLiveBuses = useCallback(async (lat, lon, busStops) => {
     try {
       const positions = await getLiveBusPositions(lat, lon, 3)
+console.log('[BODS] buses with no line:', (positions||[]).filter(b => !b.line))
       const busList = positions || []
       setLiveBuses(busList)
       drawLiveBuses(busList)
