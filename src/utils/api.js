@@ -13,34 +13,35 @@ const OVERPASS_MIRRORS = [
   'https://overpass.osm.ch/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ]
 
+// Cache Overpass results for 5 minutes — stops/stations don't change often
+const overpassCache = new Map()
+const OVERPASS_CACHE_TTL = 5 * 60 * 1000
+
 async function overpassQuery(query) {
-  // Race all mirrors in parallel — first 2xx response wins
-  let resolved = false
-  const racePromises = OVERPASS_MIRRORS.map(async mirror => {
+  const cacheKey = query.trim().replace(/\s+/g, ' ')
+  const cached = overpassCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < OVERPASS_CACHE_TTL) return cached.data
+
+  // Try mirrors sequentially but with short timeouts — fast failover
+  for (const mirror of OVERPASS_MIRRORS) {
     try {
       const res = await fetch(mirror, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'data=' + encodeURIComponent(query),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(12000),
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
-      if (resolved) throw new Error('Already resolved')
-      resolved = true
-      return await res.json()
+      const data = await res.json()
+      overpassCache.set(cacheKey, { data, ts: Date.now() })
+      return data
     } catch (err) {
-      if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
-      throw err
+      console.warn('Overpass mirror failed:', mirror, err.message)
     }
-  })
-  try {
-    return await Promise.any(racePromises)
-  } catch {
-    throw new Error('All Overpass mirrors failed')
   }
+  throw new Error('All Overpass mirrors failed')
 }
 const TRANSITOUS = 'https://api.transitous.org/api/v1'
 const UA         = { 'User-Agent': 'HOMERUN-v2/1.0 (transit-navigator)' }
@@ -167,27 +168,9 @@ export async function deepScan(lat, lon) {
 out body;
 `
 
-  let resolved = false
-  const racePromises = OVERPASS_MIRRORS.map(async mirror => {
-    try {
-      const r = await fetch(mirror, {
-        method: 'POST',
-        body: `data=${encodeURIComponent(query)}`,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: AbortSignal.timeout(15000),
-      })
-      if (!r.ok) throw new Error('HTTP ' + r.status)
-      if (resolved) throw new Error('Already resolved')
-      resolved = true
-      const data = await r.json()
-      return classifyResults(data.elements || [], lat, lon)
-    } catch (err) {
-      if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
-      throw err
-    }
-  })
   try {
-    return await Promise.any(racePromises)
+    const data = await overpassQuery(query)
+    return classifyResults(data.elements || [], lat, lon)
   } catch {
     console.warn('All Overpass mirrors failed')
     return emptyResults()
@@ -206,43 +189,25 @@ export async function scanLocalTaxis(lat, lon) {
 );
 out body center;
 `
-  let resolved = false
-  const racePromises = OVERPASS_MIRRORS.map(async mirror => {
-    try {
-      const r = await fetch(mirror, {
-        method: 'POST',
-        body: `data=${encodeURIComponent(query)}`,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: AbortSignal.timeout(15000),
-      })
-      if (!r.ok) throw new Error('HTTP ' + r.status)
-      if (resolved) throw new Error('Already resolved')
-      resolved = true
-      const data = await r.json()
-      return (data.elements || [])
-        .filter(el => el.tags)
-        .map(el => {
-          const clat = el.lat || el.center?.lat
-          const clon = el.lon || el.center?.lon
-          return {
-            id: el.id,
-            name: el.tags.operator || el.tags.name || el.tags.brand || 'Local Taxi',
-            phone: el.tags.phone || el.tags['contact:phone'] || el.tags['contact:mobile'] || null,
-            website: el.tags.website || el.tags['contact:website'] || null,
-            lat: clat, lon: clon,
-            dist: haversine(lat, lon, clat, clon),
-          }
-        })
-        .filter(t => t.lat && t.phone)
-        .sort((a, b) => a.dist - b.dist)
-        .slice(0, 6)
-    } catch (err) {
-      if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
-      throw err
-    }
-  })
   try {
-    return await Promise.any(racePromises)
+    const data = await overpassQuery(query)
+    return (data.elements || [])
+      .filter(el => el.tags)
+      .map(el => {
+        const clat = el.lat || el.center?.lat
+        const clon = el.lon || el.center?.lon
+        return {
+          id: el.id,
+          name: el.tags.operator || el.tags.name || el.tags.brand || 'Local Taxi',
+          phone: el.tags.phone || el.tags['contact:phone'] || el.tags['contact:mobile'] || null,
+          website: el.tags.website || el.tags['contact:website'] || null,
+          lat: clat, lon: clon,
+          dist: haversine(lat, lon, clat, clon),
+        }
+      })
+      .filter(t => t.lat && t.phone)
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 6)
   } catch {
     return []
   }
