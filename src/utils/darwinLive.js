@@ -186,18 +186,18 @@ function matchService(scheduledTime, destinationName, darwinServices) {
   if (!scheduledTime || !darwinServices.length) return null;
 
   const targetHHMM = scheduledTime.substring(0, 5);
-  const normalizedDest = normalizeStationName(destinationName) || '';
+  const normalizedDest = (normalizeStationName(destinationName) || '').toLowerCase();
 
   // Try exact time + destination match first
   for (const service of darwinServices) {
     if (service.scheduledDeparture === targetHHMM) {
       const destMatch = normalizedDest && service.destinations.some(d => {
-        const nd = normalizeStationName(d) || '';
-        return nd && (nd.includes(normalizedDest) || normalizedDest.includes(nd));
+        const nd = (normalizeStationName(d) || '').toLowerCase();
+        return nd && normalizedDest && (nd.includes(normalizedDest) || normalizedDest.includes(nd));
       });
       const callingMatch = normalizedDest && service.callingPoints.some(cp => {
-        const nc = normalizeStationName(cp.name) || '';
-        return nc && (nc.includes(normalizedDest) || normalizedDest.includes(nc));
+        const nc = (normalizeStationName(cp.name) || '').toLowerCase();
+        return nc && normalizedDest && (nc.includes(normalizedDest) || normalizedDest.includes(nc));
       });
 
       if (destMatch || callingMatch) {
@@ -212,12 +212,12 @@ function matchService(scheduledTime, destinationName, darwinServices) {
     const diff = timeDiffMinutes(targetHHMM, service.scheduledDeparture);
     if (Math.abs(diff) <= 2) {
       const destMatch = normalizedDest && service.destinations.some(d => {
-        const nd = normalizeStationName(d) || '';
-        return nd && (nd.includes(normalizedDest) || normalizedDest.includes(nd));
+        const nd = (normalizeStationName(d) || '').toLowerCase();
+        return nd && normalizedDest && (nd.includes(normalizedDest) || normalizedDest.includes(nd));
       });
       const callingMatch = normalizedDest && service.callingPoints.some(cp => {
-        const nc = normalizeStationName(cp.name) || '';
-        return nc && (nc.includes(normalizedDest) || normalizedDest.includes(nc));
+        const nc = (normalizeStationName(cp.name) || '').toLowerCase();
+        return nc && normalizedDest && (nc.includes(normalizedDest) || normalizedDest.includes(nc));
       });
       if (destMatch || callingMatch) return service;
     }
