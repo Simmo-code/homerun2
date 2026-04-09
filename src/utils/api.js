@@ -10,27 +10,38 @@ import { fetchLiveBuses, matchBusesToStops } from './bodsLiveBus.js'
 const NOMINATIM  = 'https://nominatim.openstreetmap.org'
 const OSRM       = 'https://router.project-osrm.org'
 const OVERPASS_MIRRORS = [
+  'https://overpass.osm.ch/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ]
 
 async function overpassQuery(query) {
-  for (const mirror of OVERPASS_MIRRORS) {
-    try {
-      const res = await fetch(mirror, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query),
-        signal: AbortSignal.timeout(12000),
-      })
+  // Race all mirrors in parallel — first successful response wins
+  const controller = new AbortController()
+  const results = OVERPASS_MIRRORS.map(mirror =>
+    fetch(mirror, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query),
+      signal: controller.signal,
+    })
+    .then(async res => {
       if (!res.ok) throw new Error('HTTP ' + res.status)
-      return await res.json()
-    } catch (err) {
-      console.warn('Overpass mirror failed:', mirror, err.message)
-    }
+      const data = await res.json()
+      controller.abort() // Cancel other requests
+      return data
+    })
+    .catch(err => {
+      if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
+      throw err
+    })
+  )
+  try {
+    return await Promise.any(results)
+  } catch {
+    throw new Error('All Overpass mirrors failed')
   }
-  throw new Error('All Overpass mirrors failed')
 }
 const TRANSITOUS = 'https://api.transitous.org/api/v1'
 const UA         = { 'User-Agent': 'HOMERUN-v2/1.0 (transit-navigator)' }
@@ -157,30 +168,31 @@ export async function deepScan(lat, lon) {
 out body;
 `
 
-  const mirrors = [
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://overpass.private.coffee/api/interpreter',
-    'https://overpass.osm.ch/api/interpreter',
-    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-  ]
-  for (const mirror of mirrors) {
-    try {
-      const r = await fetch(mirror, {
-        method: 'POST',
-        body: `data=${encodeURIComponent(query)}`,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: AbortSignal.timeout(12000),
-      })
+  const controller = new AbortController()
+  const results = OVERPASS_MIRRORS.map(mirror =>
+    fetch(mirror, {
+      method: 'POST',
+      body: `data=${encodeURIComponent(query)}`,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      signal: controller.signal,
+    })
+    .then(async r => {
       if (!r.ok) throw new Error('HTTP ' + r.status)
       const data = await r.json()
+      controller.abort()
       return classifyResults(data.elements || [], lat, lon)
-    } catch (e) {
-      console.warn('Overpass mirror failed:', mirror, e.message)
-    }
+    })
+    .catch(err => {
+      if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
+      throw err
+    })
+  )
+  try {
+    return await Promise.any(results)
+  } catch {
+    console.warn('All Overpass mirrors failed')
+    return emptyResults()
   }
-  console.warn('All Overpass mirrors failed')
-  return emptyResults()
 }
 
 // Also scan for local taxi companies by name/phone
@@ -195,43 +207,46 @@ export async function scanLocalTaxis(lat, lon) {
 );
 out body center;
 `
-  const mirrors = [
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://overpass.private.coffee/api/interpreter',
-    'https://overpass.osm.ch/api/interpreter',
-    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-  ]
-  for (const mirror of mirrors) {
-    try {
-      const r = await fetch(mirror, {
-        method: 'POST',
-        body: `data=${encodeURIComponent(query)}`,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: AbortSignal.timeout(12000),
-      })
-      if (!r.ok) continue
+  const controller = new AbortController()
+  const results = OVERPASS_MIRRORS.map(mirror =>
+    fetch(mirror, {
+      method: 'POST',
+      body: `data=${encodeURIComponent(query)}`,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      signal: controller.signal,
+    })
+    .then(async r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status)
       const data = await r.json()
+      controller.abort()
       return (data.elements || [])
-      .filter(el => el.tags)
-      .map(el => {
-        const clat = el.lat || el.center?.lat
-        const clon = el.lon || el.center?.lon
-        return {
-          id: el.id,
-          name: el.tags.operator || el.tags.name || el.tags.brand || 'Local Taxi',
-          phone: el.tags.phone || el.tags['contact:phone'] || el.tags['contact:mobile'] || null,
-          website: el.tags.website || el.tags['contact:website'] || null,
-          lat: clat, lon: clon,
-          dist: haversine(lat, lon, clat, clon),
-        }
-      })
-      .filter(t => t.lat && t.phone)
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, 6)
-    } catch { continue }
+        .filter(el => el.tags)
+        .map(el => {
+          const clat = el.lat || el.center?.lat
+          const clon = el.lon || el.center?.lon
+          return {
+            id: el.id,
+            name: el.tags.operator || el.tags.name || el.tags.brand || 'Local Taxi',
+            phone: el.tags.phone || el.tags['contact:phone'] || el.tags['contact:mobile'] || null,
+            website: el.tags.website || el.tags['contact:website'] || null,
+            lat: clat, lon: clon,
+            dist: haversine(lat, lon, clat, clon),
+          }
+        })
+        .filter(t => t.lat && t.phone)
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, 6)
+    })
+    .catch(err => {
+      if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
+      throw err
+    })
+  )
+  try {
+    return await Promise.any(results)
+  } catch {
+    return []
   }
-  return []
 }
 
 function classifyResults(elements, lat, lon) {
@@ -620,4 +635,3 @@ export async function getLiveBusPositions(lat, lon, radiusKm = 2) {
     return []
   }
 }
-
