@@ -10,30 +10,34 @@ import { fetchLiveBuses, matchBusesToStops } from './bodsLiveBus.js'
 const NOMINATIM  = 'https://nominatim.openstreetmap.org'
 const OSRM       = 'https://router.project-osrm.org'
 const OVERPASS_MIRRORS = [
-  'https://overpass.osm.ch/api/interpreter',
   'https://overpass-api.de/api/interpreter',
+  'https://overpass.osm.ch/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
 ]
 
 async function overpassQuery(query) {
   for (const mirror of OVERPASS_MIRRORS) {
     try {
-      console.log('[Overpass] Trying:', mirror.split('//')[1].split('/')[0])
       const res = await fetch(mirror, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'data=' + encodeURIComponent(query),
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(15000),
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const data = await res.json()
-      console.log('[Overpass] Success from:', mirror.split('//')[1].split('/')[0], '—', (data.elements||[]).length, 'elements')
+      // If mirror returned 0 elements, try the next one — might have incomplete data
+      if (!data.elements || data.elements.length === 0) {
+        console.warn('Overpass mirror returned 0 elements:', mirror)
+        continue
+      }
       return data
     } catch (err) {
       console.warn('Overpass mirror failed:', mirror, err.message)
     }
   }
-  throw new Error('All Overpass mirrors failed')
+  // If all mirrors returned 0 or failed, return empty rather than throwing
+  return { elements: [] }
 }
 const TRANSITOUS = 'https://api.transitous.org/api/v1'
 const UA         = { 'User-Agent': 'HOMERUN-v2/1.0 (transit-navigator)' }
