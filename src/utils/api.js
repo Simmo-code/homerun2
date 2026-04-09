@@ -15,18 +15,10 @@ const OVERPASS_MIRRORS = [
   'https://overpass.kumi.systems/api/interpreter',
 ]
 
-// Cache Overpass results for 5 minutes — stops/stations don't change often
-const overpassCache = new Map()
-const OVERPASS_CACHE_TTL = 5 * 60 * 1000
-
 async function overpassQuery(query) {
-  const cacheKey = query.trim().replace(/\s+/g, ' ')
-  const cached = overpassCache.get(cacheKey)
-  if (cached && Date.now() - cached.ts < OVERPASS_CACHE_TTL) return cached.data
-
-  // Try mirrors sequentially but with short timeouts — fast failover
   for (const mirror of OVERPASS_MIRRORS) {
     try {
+      console.log('[Overpass] Trying:', mirror.split('//')[1].split('/')[0])
       const res = await fetch(mirror, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -35,7 +27,7 @@ async function overpassQuery(query) {
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const data = await res.json()
-      overpassCache.set(cacheKey, { data, ts: Date.now() })
+      console.log('[Overpass] Success from:', mirror.split('//')[1].split('/')[0], '—', (data.elements||[]).length, 'elements')
       return data
     } catch (err) {
       console.warn('Overpass mirror failed:', mirror, err.message)
