@@ -70,8 +70,12 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
     ?.filter(l => l.mode !== 'WALK' || journey.legs.indexOf(l) === 0 || journey.legs.indexOf(l) === journey.legs.length-1)
     .map(l => {
       const s = modeStyle(l.mode)
-      const durM = legDurationMins(l.startTime, l.endTime)
-      const name = l.routeShortName || (l.mode === 'WALK' ? `Walk ${durM != null ? durM + 'm' : ''}` : l.mode)
+      if (l.mode === 'WALK') {
+        const walkDist = l.distance || 0
+        const walkMin = walkDist > 0 ? Math.max(1, Math.round(walkDist / 80)) : legDurationMins(l.startTime, l.endTime)
+        return `${s.icon} Walk ${walkMin != null ? walkMin + 'm' : ''}`
+      }
+      const name = l.routeShortName || l.mode
       return `${s.icon} ${name}`
     }).join(' → ') || 'Walk'
 
@@ -182,8 +186,12 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
             {journey.legs?.map((leg, i) => {
               const s = modeStyle(leg.mode)
               const isWalk = leg.mode === 'WALK'
-              const dur = legDurationMins(leg.startTime, leg.endTime)
               const dist = leg.distance || 0
+              // For walk legs, calculate duration from distance (80m/min) since
+              // Transitous walk timestamps are often unreliable
+              const dur = isWalk && dist > 0
+                ? Math.max(1, Math.round(dist / 80))
+                : legDurationMins(leg.startTime, leg.endTime)
 
               return (
                 <div key={i} style={{
