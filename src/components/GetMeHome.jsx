@@ -8,6 +8,15 @@ import { enrichAllItineraries } from '../utils/darwinLive.js'
 
 const TRANSITOUS = 'https://api.transitous.org/api/v1/plan'
 
+// Haversine distance in metres
+function haversineDist(lat1, lon1, lat2, lon2) {
+  const R = 6371000
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+}
+
 const MODE_STYLE = {
   WALK:          { icon: '🚶', color: '#4ade80', label: 'Walk' },
   BUS:           { icon: '🚌', color: '#f59e0b', label: 'Bus' },
@@ -357,6 +366,46 @@ export default function GetMeHome({ from, to, onClose }) {
         console.warn('[Darwin] GetMeHome enrichment failed:', err.message)
         enriched = itins
       }
+
+      // Fix first/last walk leg distances — Transitous often reports only
+      // platform-to-road distance, not the real walk from your landing point
+      enriched.forEach(itin => {
+        if (!itin.legs?.length) return
+
+        // Fix first walk leg: use real distance from landing point to first transit stop
+        const firstLeg = itin.legs[0]
+        if (firstLeg.mode === 'WALK' && firstLeg.to) {
+          const toLat = firstLeg.to.lat
+          const toLon = firstLeg.to.lon
+          if (toLat && toLon) {
+            const realDist = haversineDist(from.lat, from.lon, toLat, toLon)
+            // Only override if real distance is significantly more than reported
+            if (realDist > (firstLeg.distance || 0) * 1.5 && realDist > 100) {
+              firstLeg.distance = Math.round(realDist)
+              firstLeg._corrected = true
+            }
+          }
+        }
+
+        // Fix last walk leg: use real distance from last transit stop to destination
+        const lastLeg = itin.legs[itin.legs.length - 1]
+        if (lastLeg.mode === 'WALK' && lastLeg.from) {
+          const fromLat = lastLeg.from.lat
+          const fromLon = lastLeg.from.lon
+          if (fromLat && fromLon) {
+            const realDist = haversineDist(fromLat, fromLon, to.lat, to.lon)
+            if (realDist > (lastLeg.distance || 0) * 1.5 && realDist > 100) {
+              lastLeg.distance = Math.round(realDist)
+              lastLeg._corrected = true
+            }
+          }
+        }
+
+        // Recalculate total walk distance
+        itin.walkDistance = itin.legs
+          .filter(l => l.mode === 'WALK')
+          .reduce((sum, l) => sum + (l.distance || 0), 0)
+      })
 
       // Sort by duration
       enriched.sort((a, b) => a.duration - b.duration)
