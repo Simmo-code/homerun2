@@ -8,7 +8,7 @@ const TILE_LAYERS = {
   topo:      { name: 'Topo',      emoji: '⛰️', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png' },
 }
 
-export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
+export default function TopBar({ from, scanState, onShare, onReset, onRetry, mapRef }) {
   const [open,        setOpen]        = useState(false)
   const [activeLayer, setActiveLayer] = useState('street')
 
@@ -169,9 +169,27 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
 
             {/* Menu items */}
             {[
-              from && { icon: '🔄', label: 'Reset & Start Over', action: () => { onReset?.(); setOpen(false) }, color: '#ef4444' },
               from && scanState === 'done' && { icon: '📡', label: 'Rescan Transport', action: () => { onRetry?.(); setOpen(false) } },
+              from && { icon: '📍', label: 'Centre on Me', action: () => {
+                const map = mapRef?.current
+                if (map && from) map.flyTo([from.lat, from.lon], 15, { duration: 0.8 })
+                setOpen(false)
+              }},
+              from && { icon: '🗺️', label: 'Open in Google Maps', action: () => {
+                window.open(`https://www.google.com/maps/@${from.lat},${from.lon},15z`, '_blank')
+                setOpen(false)
+              }},
               { icon: '📤', label: 'Share Location', action: () => { onShare?.(); setOpen(false) } },
+              from && { icon: '🆘', label: 'Emergency — Share GPS', action: () => {
+                const msg = `I need help. My location: https://www.google.com/maps?q=${from.lat},${from.lon}`
+                if (navigator.share) {
+                  navigator.share({ title: 'My Location', text: msg }).catch(() => {})
+                } else {
+                  navigator.clipboard?.writeText(msg)
+                }
+                setOpen(false)
+              }, color: '#ef4444' },
+              from && { icon: '🔄', label: 'Reset & Start Over', action: () => { onReset?.(); setOpen(false) }, color: '#6b7280' },
             ].filter(Boolean).map((item, i) => (
               <button
                 key={i}
@@ -206,4 +224,4 @@ export default function TopBar({ from, scanState, onShare, onReset, mapRef }) {
       )}
     </>
   )
-}// retry export handled via onRetry prop already in menu items
+}
