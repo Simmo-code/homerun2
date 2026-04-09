@@ -11,34 +11,33 @@ const NOMINATIM  = 'https://nominatim.openstreetmap.org'
 const OSRM       = 'https://router.project-osrm.org'
 const OVERPASS_MIRRORS = [
   'https://overpass.osm.ch/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ]
 
 async function overpassQuery(query) {
-  // Race all mirrors in parallel — first successful response wins
-  const controller = new AbortController()
-  const results = OVERPASS_MIRRORS.map(mirror =>
-    fetch(mirror, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(query),
-      signal: controller.signal,
-    })
-    .then(async res => {
+  // Race all mirrors in parallel — first 2xx response wins
+  let resolved = false
+  const racePromises = OVERPASS_MIRRORS.map(async mirror => {
+    try {
+      const res = await fetch(mirror, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query),
+        signal: AbortSignal.timeout(15000),
+      })
       if (!res.ok) throw new Error('HTTP ' + res.status)
-      const data = await res.json()
-      controller.abort() // Cancel other requests
-      return data
-    })
-    .catch(err => {
+      if (resolved) throw new Error('Already resolved')
+      resolved = true
+      return await res.json()
+    } catch (err) {
       if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
       throw err
-    })
-  )
+    }
+  })
   try {
-    return await Promise.any(results)
+    return await Promise.any(racePromises)
   } catch {
     throw new Error('All Overpass mirrors failed')
   }
@@ -168,27 +167,27 @@ export async function deepScan(lat, lon) {
 out body;
 `
 
-  const controller = new AbortController()
-  const results = OVERPASS_MIRRORS.map(mirror =>
-    fetch(mirror, {
-      method: 'POST',
-      body: `data=${encodeURIComponent(query)}`,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      signal: controller.signal,
-    })
-    .then(async r => {
+  let resolved = false
+  const racePromises = OVERPASS_MIRRORS.map(async mirror => {
+    try {
+      const r = await fetch(mirror, {
+        method: 'POST',
+        body: `data=${encodeURIComponent(query)}`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: AbortSignal.timeout(15000),
+      })
       if (!r.ok) throw new Error('HTTP ' + r.status)
+      if (resolved) throw new Error('Already resolved')
+      resolved = true
       const data = await r.json()
-      controller.abort()
       return classifyResults(data.elements || [], lat, lon)
-    })
-    .catch(err => {
+    } catch (err) {
       if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
       throw err
-    })
-  )
+    }
+  })
   try {
-    return await Promise.any(results)
+    return await Promise.any(racePromises)
   } catch {
     console.warn('All Overpass mirrors failed')
     return emptyResults()
@@ -207,18 +206,19 @@ export async function scanLocalTaxis(lat, lon) {
 );
 out body center;
 `
-  const controller = new AbortController()
-  const results = OVERPASS_MIRRORS.map(mirror =>
-    fetch(mirror, {
-      method: 'POST',
-      body: `data=${encodeURIComponent(query)}`,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      signal: controller.signal,
-    })
-    .then(async r => {
+  let resolved = false
+  const racePromises = OVERPASS_MIRRORS.map(async mirror => {
+    try {
+      const r = await fetch(mirror, {
+        method: 'POST',
+        body: `data=${encodeURIComponent(query)}`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: AbortSignal.timeout(15000),
+      })
       if (!r.ok) throw new Error('HTTP ' + r.status)
+      if (resolved) throw new Error('Already resolved')
+      resolved = true
       const data = await r.json()
-      controller.abort()
       return (data.elements || [])
         .filter(el => el.tags)
         .map(el => {
@@ -236,14 +236,13 @@ out body center;
         .filter(t => t.lat && t.phone)
         .sort((a, b) => a.dist - b.dist)
         .slice(0, 6)
-    })
-    .catch(err => {
+    } catch (err) {
       if (err.name !== 'AbortError') console.warn('Overpass mirror failed:', mirror, err.message)
       throw err
-    })
-  )
+    }
+  })
   try {
-    return await Promise.any(results)
+    return await Promise.any(racePromises)
   } catch {
     return []
   }
