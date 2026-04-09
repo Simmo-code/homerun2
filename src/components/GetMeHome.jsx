@@ -25,14 +25,33 @@ function modeStyle(mode) {
 
 function fmtTime(ms) {
   if (!ms) return '—'
-  return new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  const d = typeof ms === 'number' ? new Date(ms) : new Date(ms)
+  if (isNaN(d)) return '—'
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
 function fmtMins(secs) {
-  if (!secs) return '—'
+  if (!secs || isNaN(secs)) return '—'
   const m = Math.round(secs / 60)
   if (m < 60) return `${m} min`
   return `${Math.floor(m/60)}h ${m%60 ? m%60+'m' : ''}`
+}
+
+// Safely calculate duration in minutes between two timestamps (epoch ms or ISO strings)
+function legDurationMins(startTime, endTime) {
+  if (!startTime || !endTime) return null
+  const s = typeof startTime === 'number' ? startTime : new Date(startTime).getTime()
+  const e = typeof endTime === 'number' ? endTime : new Date(endTime).getTime()
+  if (isNaN(s) || isNaN(e)) return null
+  return Math.round((e - s) / 60000)
+}
+
+// Convert any timestamp to epoch ms
+function toEpoch(t) {
+  if (!t) return null
+  if (typeof t === 'number') return t
+  const d = new Date(t).getTime()
+  return isNaN(d) ? null : d
 }
 
 // ── Journey card ────────────────────────────
@@ -51,11 +70,12 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
     ?.filter(l => l.mode !== 'WALK' || journey.legs.indexOf(l) === 0 || journey.legs.indexOf(l) === journey.legs.length-1)
     .map(l => {
       const s = modeStyle(l.mode)
-      const name = l.routeShortName || (l.mode === 'WALK' ? `Walk ${Math.round((l.endTime-l.startTime)/60000)}m` : l.mode)
+      const durM = legDurationMins(l.startTime, l.endTime)
+      const name = l.routeShortName || (l.mode === 'WALK' ? `Walk ${durM != null ? durM + 'm' : ''}` : l.mode)
       return `${s.icon} ${name}`
     }).join(' → ') || 'Walk'
 
-  const urgency = depart ? Math.round((depart - Date.now()) / 60000) : null
+  const urgency = depart ? Math.round((toEpoch(depart) - Date.now()) / 60000) : null
 
   return (
     <div
@@ -162,7 +182,7 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
             {journey.legs?.map((leg, i) => {
               const s = modeStyle(leg.mode)
               const isWalk = leg.mode === 'WALK'
-              const dur = Math.round((leg.endTime - leg.startTime) / 60000)
+              const dur = legDurationMins(leg.startTime, leg.endTime)
               const dist = leg.distance || 0
 
               return (
@@ -191,10 +211,10 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
                   <div style={{ flex: 1, paddingBottom: '4px' }}>
                     {/* From */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.3, marginBottom: '2px' }}>
                           {isWalk
-                            ? `Walk to ${leg.to?.name?.replace('START','your location').replace('END','destination')}`
+                            ? `Walk to ${leg.to?.name?.replace('START','your location').replace('END','destination') || 'next stop'}`
                             : `${s.label} ${leg.routeShortName || ''} → ${leg.headsign || leg.to?.name || ''}`
                           }
                         </div>
@@ -208,11 +228,32 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
                             To: {leg.to.name}
                           </div>
                         )}
+
+                        {/* Operator info */}
+                        {!isWalk && (leg.agencyName || leg.liveStatus?.operator) && (
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            {leg.agencyName || leg.liveStatus?.operator}
+                          </div>
+                        )}
+
+                        {/* Platform info from Darwin */}
+                        {!isWalk && leg.liveStatus?.platform && (
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '3px',
+                            marginTop: '4px', padding: '2px 7px', borderRadius: '4px',
+                            background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.2)',
+                            fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--cyan)',
+                          }}>
+                            Platform {leg.liveStatus.platform}
+                          </div>
+                        )}
+
                         {/* Live Darwin status for rail legs */}
                         {!isWalk && leg.liveStatus?.confidence === 'live' && (
                           <div style={{
                             display: 'inline-flex', alignItems: 'center', gap: '4px',
-                            marginTop: '4px', padding: '2px 7px', borderRadius: '4px',
+                            marginTop: '4px', marginLeft: leg.liveStatus?.platform ? '4px' : '0',
+                            padding: '2px 7px', borderRadius: '4px',
                             background: `${leg.liveStatus.color}15`,
                             border: `1px solid ${leg.liveStatus.color}30`,
                             fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700,
@@ -228,15 +269,21 @@ function JourneyCard({ journey, index, fastest, active, onClick }) {
                           {fmtTime(leg.startTime)}
                         </div>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                          {dur} min{dist > 0 ? ` · ${fmtDist(dist)}` : ''}
+                          {dur != null ? `${dur} min` : '—'}{dist > 0 ? ` · ${fmtDist(dist)}` : ''}
                         </div>
+                        {/* Show arrival time for transit legs */}
+                        {!isWalk && leg.endTime && (
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>
+                            arr {fmtTime(leg.endTime)}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Intermediate stops count */}
                     {!isWalk && leg.intermediateStops?.length > 0 && (
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', fontFamily: 'var(--font-mono)' }}>
-                        {leg.intermediateStops.length} stops
+                        {leg.intermediateStops.length} stop{leg.intermediateStops.length !== 1 ? 's' : ''}
                       </div>
                     )}
                   </div>
