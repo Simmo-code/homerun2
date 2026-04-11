@@ -5,6 +5,17 @@ import { useState, useEffect } from 'react'
 import { fmtDist, fmtWalk, fetchLiveDepartures } from '../utils/api'
 import { fetchTrainDepartures, getCRS } from '../hooks/useTrainDepartures'
 import { fetchTransitousDepartures } from '../utils/transitousDepartures'
+
+// Format walk time from distance in metres — shows hours + minutes for long walks
+function fmtWalkTime(metres) {
+  if (!metres) return '—'
+  const mins = Math.max(1, Math.round(metres / 80))
+  if (mins < 2) return 'right here'
+  if (mins < 60) return `${mins} min walk`
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m > 0 ? `${h}h ${m}m walk` : `${h}h walk`
+}
  
 function MinuteBadge({ mins, cancelled, delayed }) {
   if (cancelled) return (
@@ -304,7 +315,7 @@ export default function DepartureBoard({ item, walkInfo, onClose, onGetMeHome, o
                   fontWeight: 600, padding: '2px 8px', borderRadius: '4px',
                   background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.2)',
                 }}>
-                  🚶 {fmtWalk(walkInfo.distance)} walk from you
+                  🚶 {fmtWalkTime(walkInfo.distance)} from you
                 </span>
               )}
  
