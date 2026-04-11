@@ -1,5 +1,5 @@
 // TopBar v4 — collapsible top-left corner menu with map layers
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 
 const TILE_LAYERS = {
   street:    { name: 'Street',    emoji: '🗺️', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' },
@@ -8,9 +8,166 @@ const TILE_LAYERS = {
   topo:      { name: 'Topo',      emoji: '⛰️', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png' },
 }
 
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.osm.ch/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+]
+
+// Haversine distance in metres
+function haversineDist(lat1, lon1, lat2, lon2) {
+  const R = 6371000
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+}
+
+function fmtNearbyDist(m) {
+  if (m < 1000) return `${Math.round(m)}m`
+  return `${(m/1000).toFixed(1)}km`
+}
+
+function fmtWalkMins(m) {
+  const mins = Math.max(1, Math.round(m / 80))
+  if (mins < 60) return `${mins} min`
+  const h = Math.floor(mins / 60)
+  const rm = mins % 60
+  return rm > 0 ? `${h}h ${rm}m` : `${h}h`
+}
+
 export default function TopBar({ from, scanState, onShare, onReset, onRetry, mapRef }) {
   const [open,        setOpen]        = useState(false)
   const [activeLayer, setActiveLayer] = useState('street')
+  const [nearbyPlaces, setNearbyPlaces] = useState(null) // { pubs: [], shops: [] }
+  const [nearbyLoading, setNearbyLoading] = useState(false)
+  const nearbyMarkersRef = useRef([])
+
+  const clearNearbyMarkers = useCallback(() => {
+    const map = mapRef?.current
+    if (!map) return
+    nearbyMarkersRef.current.forEach(m => { try { map.removeLayer(m) } catch {} })
+    nearbyMarkersRef.current = []
+  }, [mapRef])
+
+  const findNearbyPlaces = useCallback(async () => {
+    if (!from) return
+    setNearbyLoading(true)
+    clearNearbyMarkers()
+
+    const query = `
+[out:json][timeout:15];
+(
+  node["amenity"="pub"](around:5000,${from.lat},${from.lon});
+  node["amenity"="bar"](around:5000,${from.lat},${from.lon});
+  node["shop"="convenience"](around:5000,${from.lat},${from.lon});
+  node["shop"="supermarket"](around:5000,${from.lat},${from.lon});
+  node["shop"="general"](around:5000,${from.lat},${from.lon});
+);
+out body;`
+
+    try {
+      let data = null
+      for (const mirror of OVERPASS_MIRRORS) {
+        try {
+          const res = await fetch(mirror, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'data=' + encodeURIComponent(query),
+            signal: AbortSignal.timeout(12000),
+          })
+          if (!res.ok) throw new Error('HTTP ' + res.status)
+          data = await res.json()
+          if (data.elements?.length > 0) break
+        } catch { continue }
+      }
+
+      if (!data?.elements?.length) {
+        setNearbyPlaces({ pubs: [], shops: [] })
+        setNearbyLoading(false)
+        return
+      }
+
+      const pubs = []
+      const shops = []
+
+      data.elements.forEach(el => {
+        if (!el.lat || !el.lon || !el.tags) return
+        const dist = haversineDist(from.lat, from.lon, el.lat, el.lon)
+        const item = {
+          id: el.id, lat: el.lat, lon: el.lon, dist,
+          name: el.tags.name || (el.tags.amenity === 'pub' ? 'Pub' : el.tags.amenity === 'bar' ? 'Bar' : 'Shop'),
+          type: el.tags.amenity || el.tags.shop,
+          phone: el.tags.phone || el.tags['contact:phone'] || null,
+          hours: el.tags.opening_hours || null,
+        }
+        if (el.tags.amenity === 'pub' || el.tags.amenity === 'bar') pubs.push(item)
+        else shops.push(item)
+      })
+
+      pubs.sort((a, b) => a.dist - b.dist)
+      shops.sort((a, b) => a.dist - b.dist)
+      const topPubs = pubs.slice(0, 3)
+      const topShops = shops.slice(0, 3)
+
+      setNearbyPlaces({ pubs: topPubs, shops: topShops })
+
+      // Drop markers on map
+      const map = mapRef?.current
+      const L = window.L
+      if (map && L) {
+        const allPlaces = [...topPubs, ...topShops]
+        allPlaces.forEach(place => {
+          const isPub = place.type === 'pub' || place.type === 'bar'
+          const emoji = isPub ? '🍺' : '🛒'
+          const color = isPub ? '#f59e0b' : '#22c55e'
+          const icon = L.divIcon({
+            className: '',
+            html: `<div style="
+              width:30px;height:30px;border-radius:8px;
+              background:${color}22;border:2px solid ${color}88;
+              display:flex;align-items:center;justify-content:center;
+              font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.4);
+            ">${emoji}</div>`,
+            iconSize: [30, 30], iconAnchor: [15, 15],
+          })
+          const marker = L.marker([place.lat, place.lon], { icon, zIndexOffset: 700 })
+            .bindPopup(`
+              <div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:150px;padding:4px 0">
+                <div style="font-weight:800;font-size:14px;margin-bottom:4px">${emoji} ${place.name}</div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px">
+                  ${fmtNearbyDist(place.dist)} · 🚶 ${fmtWalkMins(place.dist)}
+                </div>
+                ${place.hours ? `<div style="color:#aaa;font-size:10px;margin-bottom:2px">🕐 ${place.hours}</div>` : ''}
+                ${place.phone ? `<div style="margin-top:4px"><a href="tel:${place.phone}" style="color:#00e5ff;font-size:11px">📞 ${place.phone}</a></div>` : ''}
+                <div style="margin-top:4px">
+                  <a href="https://www.google.com/maps/dir/${from.lat},${from.lon}/${place.lat},${place.lon}" 
+                     target="_blank" style="color:#4ade80;font-size:10px;text-decoration:none">
+                    🚶 Walking directions →
+                  </a>
+                </div>
+              </div>
+            `)
+            .addTo(map)
+          nearbyMarkersRef.current.push(marker)
+        })
+
+        // Fit map to show all places
+        if (allPlaces.length > 0) {
+          const bounds = L.latLngBounds([
+            [from.lat, from.lon],
+            ...allPlaces.map(p => [p.lat, p.lon])
+          ])
+          map.flyToBounds(bounds, { padding: [60, 60], duration: 1, maxZoom: 15 })
+        }
+      }
+    } catch (err) {
+      console.warn('Nearby places search failed:', err.message)
+      setNearbyPlaces({ pubs: [], shops: [] })
+    }
+
+    setNearbyLoading(false)
+  }, [from, mapRef, clearNearbyMarkers])
 
   const isLive     = scanState === 'done' && from
   const isScanning = scanState === 'scanning'
@@ -170,6 +327,9 @@ export default function TopBar({ from, scanState, onShare, onReset, onRetry, map
             {/* Menu items */}
             {[
               from && scanState === 'done' && { icon: '📡', label: 'Rescan Transport', action: () => { onRetry?.(); setOpen(false) } },
+              from && { icon: '🍺', label: nearbyLoading ? 'Searching…' : 'Find Pubs & Shops', action: () => {
+                if (!nearbyLoading) findNearbyPlaces()
+              }},
               from && { icon: '📍', label: 'Centre on Me', action: () => {
                 const map = mapRef?.current
                 if (map && from) map.flyTo([from.lat, from.lon], 15, { duration: 0.8 })
@@ -189,7 +349,7 @@ export default function TopBar({ from, scanState, onShare, onReset, onRetry, map
                 }
                 setOpen(false)
               }, color: '#ef4444' },
-              from && { icon: '🔄', label: 'Reset & Start Over', action: () => { onReset?.(); setOpen(false) }, color: '#6b7280' },
+              from && { icon: '🔄', label: 'Reset & Start Over', action: () => { clearNearbyMarkers(); setNearbyPlaces(null); onReset?.(); setOpen(false) }, color: '#6b7280' },
             ].filter(Boolean).map((item, i) => (
               <button
                 key={i}
@@ -211,6 +371,76 @@ export default function TopBar({ from, scanState, onShare, onReset, onRetry, map
                 {item.label}
               </button>
             ))}
+
+            {/* Nearby places results */}
+            {nearbyPlaces && (
+              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)' }}>
+                {nearbyPlaces.pubs.length === 0 && nearbyPlaces.shops.length === 0 ? (
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>
+                    No pubs or shops found within 5km
+                  </div>
+                ) : (
+                  <>
+                    {nearbyPlaces.pubs.length > 0 && (
+                      <div style={{ marginBottom: nearbyPlaces.shops.length > 0 ? '10px' : '0' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: '#f59e0b', letterSpacing: '2px', marginBottom: '6px' }}>
+                          🍺 NEAREST PUBS
+                        </div>
+                        {nearbyPlaces.pubs.map((p, i) => (
+                          <button key={i} onClick={() => {
+                            const map = mapRef?.current
+                            if (map) map.flyTo([p.lat, p.lon], 16, { duration: 0.8 })
+                            setOpen(false)
+                          }} style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer',
+                            borderBottom: i < nearbyPlaces.pubs.length - 1 ? '1px solid var(--border-faint)' : 'none',
+                          }}>
+                            <span style={{ fontSize: '18px' }}>🍺</span>
+                            <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                              {p.hours && <div style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>🕐 {p.hours}</div>}
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#f59e0b', fontWeight: 700 }}>{fmtNearbyDist(p.dist)}</div>
+                              <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>🚶 {fmtWalkMins(p.dist)}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {nearbyPlaces.shops.length > 0 && (
+                      <div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: '#22c55e', letterSpacing: '2px', marginBottom: '6px' }}>
+                          🛒 NEAREST SHOPS
+                        </div>
+                        {nearbyPlaces.shops.map((p, i) => (
+                          <button key={i} onClick={() => {
+                            const map = mapRef?.current
+                            if (map) map.flyTo([p.lat, p.lon], 16, { duration: 0.8 })
+                            setOpen(false)
+                          }} style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer',
+                            borderBottom: i < nearbyPlaces.shops.length - 1 ? '1px solid var(--border-faint)' : 'none',
+                          }}>
+                            <span style={{ fontSize: '18px' }}>🛒</span>
+                            <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                              {p.hours && <div style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>🕐 {p.hours}</div>}
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#22c55e', fontWeight: 700 }}>{fmtNearbyDist(p.dist)}</div>
+                              <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>🚶 {fmtWalkMins(p.dist)}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             <div style={{
               padding: '8px 14px',
