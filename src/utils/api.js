@@ -542,8 +542,12 @@ export function fmtDist(m) {
 }
 
 export function fmtWalk(m) {
-  const mins = Math.round(m / 80) // ~80m/min walking
-  return mins < 2 ? 'Here' : `${mins} min walk`
+  const mins = Math.max(1, Math.round(m / 80)) // ~80m/min walking
+  if (mins < 2) return 'Here'
+  if (mins < 60) return `${mins} min walk`
+  const h = Math.floor(mins / 60)
+  const rm = mins % 60
+  return rm > 0 ? `${h}h ${rm}m walk` : `${h}h walk`
 }
 
 export function taxiCost(meters) {
