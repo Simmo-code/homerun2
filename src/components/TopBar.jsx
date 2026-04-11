@@ -176,7 +176,7 @@ export default function TopBar({ from, scanState, onShare, onReset, onRetry, map
                 setOpen(false)
               }},
               from && { icon: '🗺️', label: 'Open in Google Maps', action: () => {
-                window.open(`https://www.google.com/maps/@${from.lat},${from.lon},15z`, '_blank')
+                window.open(`https://www.google.com/maps/search/?api=1&query=${from.lat},${from.lon}`, '_blank')
                 setOpen(false)
               }},
               { icon: '📤', label: 'Share Location', action: () => { onShare?.(); setOpen(false) } },
